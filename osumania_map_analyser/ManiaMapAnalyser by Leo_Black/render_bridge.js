@@ -55,6 +55,13 @@ const DEFAULT_SETTINGS = Object.freeze({
     wsEndpoint: "127.0.0.1:24050",
 });
 
+const DEFAULT_RUNTIME = Object.freeze({
+    speedRate: 1.0,
+    odFlag: null,
+    cvtFlag: null,
+    modSignature: "1.00000|none|none",
+});
+
 function ensurePayload() {
     const payload = window.__MA_RENDER_PAYLOAD;
     if (!payload || typeof payload !== "object") {
@@ -71,6 +78,10 @@ function ensurePayload() {
         settings: {
             ...DEFAULT_SETTINGS,
             ...(payload.settings && typeof payload.settings === "object" ? payload.settings : {}),
+        },
+        runtime: {
+            ...DEFAULT_RUNTIME,
+            ...(payload.runtime && typeof payload.runtime === "object" ? payload.runtime : {}),
         },
         postRenderDelayMs: Number(payload.postRenderDelayMs) || 700,
     };
@@ -130,6 +141,20 @@ function applyRenderSettings(settings) {
     applyEnableUpdateCheckSetting(false);
 }
 
+function applyRenderRuntime(runtime) {
+    const speedRate = Number(runtime.speedRate);
+    state.speedRate = Number.isFinite(speedRate) && speedRate > 0 ? speedRate : 1.0;
+
+    const odFlag = runtime.odFlag;
+    state.odFlag = odFlag == null ? null : String(odFlag).trim() || null;
+
+    const cvtFlag = runtime.cvtFlag;
+    state.cvtFlag = cvtFlag == null ? null : String(cvtFlag).trim().toUpperCase() || null;
+
+    const signature = typeof runtime.modSignature === "string" ? runtime.modSignature.trim() : "";
+    state.modSignature = signature || `${state.speedRate.toFixed(5)}|${state.odFlag || "none"}|${state.cvtFlag || "none"}`;
+}
+
 async function waitForRenderSettled(maxWaitMs, settleDelayMs) {
     const startedAt = Date.now();
     while (Date.now() - startedAt < maxWaitMs) {
@@ -149,6 +174,7 @@ async function renderFromPayload() {
     const payload = ensurePayload();
     installBeatmapFetchBridge(payload.osuText);
     applyRenderSettings(payload.settings);
+    applyRenderRuntime(payload.runtime);
     setRecomputeHandler(fetchBeatmapFile);
 
     state.clientStateName = "";

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-import shlex
+import re
 import sys
 from pathlib import Path
 
@@ -25,22 +25,31 @@ MODE_FLAG_TO_CONTENT_BAR = {
     "-g": "Graph",
 }
 
+MOD_DEFAULT_SPEED = {
+    "dt": 1.5,
+    "ht": 0.75,
+}
+
+MA_REQUEST_RE = re.compile(
+    r"^\s*/ma(?P<graph>g)?(?P<tail>(?:\s*(?:help|[-+0-9].*))?)\s*$",
+    re.IGNORECASE,
+)
+
 HELP_TEXT = "\n".join(
     [
         "osu!mania 谱面分析",
+        "基于 osumania_map_analyser 实现本项目，可以分析键型，预估对应rf/ln段位。",
         "",
-        "基于 osumania_map_analyser 实现本项目，可以分析键型，预估对应rf/ln段位",
+        "用法",
+        "/ma <bid>      默认等同于 /ma -a <bid>",
+        "/ma -n <bid>   主体不显示任何内容，即短卡片模式",
+        "/ma -a <bid>   主体内容按谱面 LN 占比自动选择 Pattern 或 Etterna",
+        "/ma -p <bid>   主体显示键型分析，非4/6/7K 主体自动回退 Pattern",
+        "/ma -e <bid>   主体显示 Etterna 7 大键型分",
+        "/ma -g <bid>   主体显示难度变化图，命令简写/mag",
+        "/ma help       显示本帮助文本",
         "",
-        "用法：",
-        "/ma <bid>     默认，等同于-a",
-        "/ma -n <bid>  None，主体不显示任何内容，即短卡片模式",
-        "/ma -a <bid>  Auto，主体内容按 LN 占比自动选择 Pattern 或 Etterna",
-        "/ma -p <bid>  Pattern，主体显示键型分析",
-        "/ma -e <bid>  Etterna，主体显示 Etterna 7 大键型分",
-        "/ma -g <bid>  Graph，主体显示难度变化图",
-        "/ma help      查看本帮助",
-        "",
-        "注：对于非4/6/7K谱面，主体内容将自动回退为Pattern显示。",
+        "示例：/ma 5170433+dt1.1 ",
     ]
 )
 
@@ -83,17 +92,20 @@ class ManiaMapAnalyserPlugin(Star):
         self.render_timeout_seconds = config.get("render_timeout_seconds", 120)
         self._render_semaphore = asyncio.Semaphore(self.max_concurrency)
 
-    @filter.command("ma", alias={"mania分析", "谱面分析"})
-    async def render_map_analysis(
-        self,
-        event: AstrMessageEvent,
-        first: str = "",
-        second: str = "",
-    ):
-        """按 beatmap id 渲染 osumania_map_analyser 图表"""
+    @filter.event_message_type(filter.EventMessageType.ALL)
+    async def render_map_analysis(self, event: AstrMessageEvent):
+        """统一处理 /ma 与 /mag 指令"""
+
+        raw_text = str(getattr(event, "message_str", "") or "")
+        matched = MA_REQUEST_RE.match(raw_text)
+        if not matched:
+            return
 
         try:
-            bid, render_overrides = self._parse_ma_command(first, second)
+            bid, render_overrides, runtime_overrides = self._parse_request(
+                graph_flag=matched.group("graph"),
+                raw_tail=matched.group("tail") or "",
+            )
         except ManiaMapAnalyserError as exc:
             yield event.plain_result(str(exc))
             return
@@ -102,13 +114,14 @@ class ManiaMapAnalyserPlugin(Star):
             yield event.plain_result(HELP_TEXT)
             return
 
-        yield await self._render_result(event, bid, render_overrides)
+        yield await self._render_result(event, bid, render_overrides, runtime_overrides)
 
     async def _render_result(
         self,
         event: AstrMessageEvent,
         bid: str,
         render_overrides: dict[str, str] | None = None,
+        runtime_overrides: dict[str, str | float | None] | None = None,
     ):
         """统一处理渲染命令，返回 plain_result 或 chain_result 对象。"""
 
@@ -122,6 +135,7 @@ class ManiaMapAnalyserPlugin(Star):
                         self.render_service.generate_from_bid,
                         bid,
                         render_overrides,
+                        runtime_overrides,
                     ),
                     timeout=self.render_timeout_seconds,
                 )
@@ -142,45 +156,89 @@ class ManiaMapAnalyserPlugin(Star):
         ]
         return event.chain_result(chain)
 
-    def _parse_ma_command(
+    def _parse_request(
         self,
-        first: str = "",
-        second: str = "",
-    ) -> tuple[str | None, dict[str, str] | None]:
-        raw_argument_text = " ".join(
-            part.strip()
-            for part in [str(first or ""), str(second or "")]
-            if part and str(part).strip()
-        )
-        if not raw_argument_text:
-            return None, None
+        graph_flag: str | None,
+        raw_tail: str,
+    ) -> tuple[
+        str | None,
+        dict[str, str] | None,
+        dict[str, str | float | None] | None,
+    ]:
+        normalized = re.sub(r"\s+", "", str(raw_tail or "")).lower()
+        if not normalized:
+            return None, None, None
 
-        try:
-            tokens = shlex.split(raw_argument_text, posix=False)
-        except ValueError as exc:
-            raise ManiaMapAnalyserError(f"命令参数解析失败：{exc}") from exc
+        if normalized in {"help", "-h", "--help"}:
+            return None, None, None
 
-        if not tokens:
-            return None, None
+        content_bar = "Graph" if graph_flag else "Auto"
+        remaining = normalized
 
-        command = tokens[0].strip().lower()
-        if command in {"help", "-h", "--help"}:
-            return None, None
+        if not graph_flag:
+            for mode_flag, mode_name in MODE_FLAG_TO_CONTENT_BAR.items():
+                if remaining.startswith(mode_flag):
+                    content_bar = mode_name
+                    remaining = remaining[len(mode_flag):]
+                    break
 
-        if len(tokens) == 1:
-            return tokens[0].strip(), {"contentBar": "Auto"}
+        if not remaining:
+            raise ManiaMapAnalyserError("缺少 bid。示例：/ma 5199917、/mag 5199917+dt")
 
-        if len(tokens) != 2:
-            raise ManiaMapAnalyserError(
-                "命令格式不正确。示例：/ma 5199917、/ma -a 5199917、/ma -g 5199917"
-            )
+        bid_text = remaining
+        mod_text = ""
+        if "+" in remaining:
+            bid_text, mod_text = remaining.split("+", 1)
+            if not bid_text or not mod_text or "+" in mod_text:
+                raise ManiaMapAnalyserError(
+                    "命令格式不正确。示例：/ma 5199917、/mag5170433+dt、/ma-g5170433+ht0.75"
+                )
 
-        mode_flag = tokens[0].strip().lower()
-        bid = tokens[1].strip()
-        content_bar = MODE_FLAG_TO_CONTENT_BAR.get(mode_flag)
-        if content_bar is None:
-            raise ManiaMapAnalyserError(
-                "未知模式参数，仅支持 -n、-a、-p、-e、-g。示例：/ma -p 5199917"
-            )
+        if not bid_text.isdigit():
+            raise ManiaMapAnalyserError("bid 格式无效，请输入谱面的数字 ID")
 
-        return bid, {"contentBar": content_bar}
+        runtime_overrides = self._build_runtime_overrides(mod_text)
+        bid = bid_text
+        return bid, {"contentBar": content_bar}, runtime_overrides
+
+    def _build_runtime_overrides(
+        self,
+        mod_text: str,
+    ) -> dict[str, str | float | None] | None:
+        if not mod_text:
+            return None
+
+        normalized = str(mod_text or "").strip().lower()
+        mod = ""
+        rate_text = ""
+        for candidate in ("dt", "ht", "in", "ho"):
+            if normalized.startswith(candidate):
+                mod = candidate
+                rate_text = normalized[len(candidate):]
+                break
+
+        if not mod:
+            raise ManiaMapAnalyserError("目前仅支持 ht、dt、in、ho 四种 mod")
+
+        if mod in {"in", "ho"}:
+            if rate_text:
+                raise ManiaMapAnalyserError(f"{mod.upper()} 不支持额外倍速参数")
+            return {"cvtFlag": mod.upper()}
+
+        speed_rate = MOD_DEFAULT_SPEED[mod]
+        if rate_text:
+            try:
+                speed_rate = float(rate_text)
+            except ValueError as exc:
+                raise ManiaMapAnalyserError(f"{mod.upper()} 倍速参数无效：{rate_text}") from exc
+
+        if speed_rate <= 0:
+            raise ManiaMapAnalyserError(f"{mod.upper()} 倍速必须大于 0")
+
+        if mod == "ht" and not (0.5 <= speed_rate <= 0.99):
+            raise ManiaMapAnalyserError("HT 倍速范围仅支持 0.5-0.99")
+
+        if mod == "dt" and not (1.01 <= speed_rate <= 2):
+            raise ManiaMapAnalyserError("DT 倍速范围仅支持 1.01-2")
+
+        return {"speedRate": speed_rate}

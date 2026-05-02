@@ -29,9 +29,11 @@ class ManiaMapAnalyserService:
         self,
         bid_input: str,
         render_overrides: dict[str, Any] | None = None,
+        runtime_overrides: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         bid = self._extract_bid(bid_input)
         effective_render_settings = self._build_effective_render_settings(render_overrides or {})
+        effective_runtime = self._build_effective_runtime_options(runtime_overrides or {})
         output_path = self.temp_root / "outputs" / f"{bid}_{uuid4().hex[:16]}.png"
 
         beatmap_path = download_beatmap_file(
@@ -53,6 +55,7 @@ class ManiaMapAnalyserService:
         payload = {
             "osuText": osu_text,
             "settings": effective_render_settings,
+            "runtime": effective_runtime,
             "postRenderDelayMs": 700,
         }
         self.runtime.render(
@@ -74,7 +77,7 @@ class ManiaMapAnalyserService:
         if raw.isdigit():
             return raw
 
-        raise ManiaMapAnalyserError("只支持纯数字bid，例如：/ma 5199917 或 /ma -g 5199917")
+        raise ManiaMapAnalyserError("bid 格式无效，请输入谱面的数字 ID，例如：5199917")
 
     def _extract_beatmap_mode(self, osu_text: str) -> int | None:
         match = re.search(r"(?mi)^\s*Mode\s*:\s*(\d+)\s*$", osu_text)
@@ -110,6 +113,37 @@ class ManiaMapAnalyserService:
             "cardOpacity": str(config.get("card_opacity", "95%")).strip() or "95%",
             "cardBlur": str(config.get("card_blur", "Soft")).strip() or "Soft",
             "cardRadius": str(config.get("card_radius", "Medium")).strip() or "Medium",
+        }
+
+    def _build_effective_runtime_options(self, runtime_overrides: dict[str, Any]) -> dict[str, Any]:
+        speed_rate = runtime_overrides.get("speedRate", 1.0)
+        try:
+            speed_rate = float(speed_rate)
+        except (TypeError, ValueError):
+            speed_rate = 1.0
+        if speed_rate <= 0:
+            speed_rate = 1.0
+
+        od_flag = runtime_overrides.get("odFlag")
+        if od_flag is not None:
+            od_flag = str(od_flag).strip() or None
+
+        cvt_flag = runtime_overrides.get("cvtFlag")
+        if cvt_flag is not None:
+            cvt_flag = str(cvt_flag).strip().upper() or None
+        if cvt_flag not in {None, "IN", "HO"}:
+            cvt_flag = None
+
+        mod_signature = str(
+            runtime_overrides.get("modSignature")
+            or f"{speed_rate:.5f}|{od_flag or 'none'}|{cvt_flag or 'none'}"
+        ).strip()
+
+        return {
+            "speedRate": speed_rate,
+            "odFlag": od_flag,
+            "cvtFlag": cvt_flag,
+            "modSignature": mod_signature,
         }
 
     def _build_effective_render_settings(self, render_overrides: dict[str, Any]) -> dict[str, Any]:

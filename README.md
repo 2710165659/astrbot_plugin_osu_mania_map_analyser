@@ -31,13 +31,17 @@ PY
 
 ## 使用
 
-- `/ma <bid>`：默认等同于 `/ma -a <bid>`
-- `/ma -n <bid>`：`None`，主体不显示任何内容，即短卡片模式
-- `/ma -a <bid>`：`Auto`，主体内容按谱面 LN 占比自动选择 `Pattern` 或 `Etterna`
-- `/ma -p <bid>`：`Pattern`，主体显示键型分析
-- `/ma -e <bid>`：`Etterna`，主体显示 Etterna 7 大键型分
-- `/ma -g <bid>`：`Graph`，主体显示难度变化图
-- `/ma help`：返回简短使用说明
-- 仅支持纯数字 `bid`
+基于 `osumania_map_analyser` 实现本项目，可以分析键型，预估对应 RF/LN 段位。
 
-注：对于非4/6/7K谱面，主体内容将自动回退为Pattern显示。
+```text
+/ma <bid>       默认等同于 /ma -a <bid>
+/ma -n <bid>    主体不显示任何内容，即短卡片模式
+/ma -a <bid>    主体内容按谱面 LN 占比自动选择 Pattern 或 Etterna
+/ma -p <bid>    主体显示 Pattern 键型分析，非 4/6/7K 主体自动回退 Pattern
+/ma -e <bid>    主体显示 Etterna 7 大键型分
+/ma -g <bid>    主体显示难度变化图，命令简写 /mag
+/ma help        显示本帮助文本
+
+示例:
+/ma 5170433+dt1.1
+```
