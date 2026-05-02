@@ -1,0 +1,295 @@
+bid,name,pattern,subPattern,expected,got,delta,deltaAbs
+,Grinding Of The Teeth x1.35,tech,stream tech,18,17.95,0.05,0.05
+,The Fate of x1.425,stamina,light jumpstream,18,17.97,0.03,0.03
+,Agoniya (Opium Remix)(theta) x1.1,speed,high stream,18,17.95,0.05,0.05
+,Rip Me Apart(theta) x1.075,jack,dense chordjack,17.8,17.98,-0.18,0.18
+,Exitium(eta),tech,stream tech,17.2,17.18,0.02,0.02
+,Intersect Thunderbolt-Remix,speed,mid stream,17.2,16.42,0.78,0.78
+,Torment Payback,jack,high chordjack,17.2,17.20,0.00,0.00
+,Collapse of Ego,stamina,dense jumpstream,16.8,16.56,0.24,0.24
+,Angel Dust (2016 Radio Mix)(zeta),jack,anchor chordjack,16.6,16.29,0.31,0.31
+,northern limit(haku) x1.1,tech,stream tech,16.4,16.49,-0.09,0.09
+,Purgatorium(efv2) x1.14,tech,stream tech,16.4,16.50,-0.10,0.10
+,Angel Dust(spz),stamina,light handstream,16.4,16.43,-0.03,0.03
+,Angel Dust (2016 Radio Mix)(zeta old),jack,high chordjack,16.4,16.46,-0.06,0.06
+,Nijuu(zeta),stamina,dense handstream,16.2,16.01,0.19,0.19
+,Kizuato(efv3) x1.3,speed,staircase,16.2,16.01,0.19,0.19
+,Apocalyptic Premonition x1.05,tech,stream tech,16,16.27,-0.27,0.27
+,NEURO-CLOUD-9(efv3),tech,stream tech,16,15.98,0.02,0.02
+,Senkou no Furea(haku) x1.25,stamina,dense handstream,16,15.70,0.30,0.30
+,HIBACHI,speed,high stream,16,15.94,0.06,0.06
+,Credens Justitiam(haku) x1.1,speed,mid stream,16,15.69,0.31,0.31
+,Double Universe x1.2,jack,mid chordjack,16,16.38,-0.38,0.38
+,Infinity Heaven(180bpm),jack,high chordjack,16,16.40,-0.40,0.40
+,Runengon(efv3),stamina,dense handstream,15.7,15.70,0.00,0.00
+,Weird Autumn(spz) x1.4,tech,stream tech,15.6,16.01,-0.41,0.41
+,Vertex Beta(spz cut),jack,mid chordjack,15.6,15.65,-0.05,0.05
+,Deadly force - Put an end,stamina,dense handstream,15.4,15.23,0.17,0.17
+,Finixe(zeta) x1.1,speed,low stream,15.4,15.70,-0.30,0.30
+,Forgotten[Collab(2015)] x1.4,tech,jack tech,15.2,14.99,0.21,0.21
+,Matusa Bomber x1.3,tech,stream tech,15,15.25,-0.25,0.25
+,Hitsugi to Futago x1.25,stamina,dense jumpstream,15,15.00,0.00,0.00
+,Ash Statues(wafles)[Inhuman],stamina,dense jumpstream,15,14.78,0.22,0.22
+,Mario Point[D-Another],speed,low stream,15,15.00,0.00,0.00
+,Shuuten,speed,high stream,15,14.84,0.16,0.16
+,crazy_tek (DJ Noriken Remix)(e9v3),jack,high chordjack,15,15.01,-0.01,0.01
+,Rose Quartz(epsilon) x1.3,jack,high chordjack,15,15.62,-0.62,0.62
+,Nhelv(e9v3),tech,stream tech,14.8,14.99,-0.19,0.19
+,Kimi to bokueno sousouka,speed,Unsigned,14.8,15.00,-0.20,0.20
+,Shuu no hazama,tech,stream tech,14.7,14.81,-0.11,0.11
+,Paradigm Shift(e8v2) x1.15,speed,low stream,14.7,14.69,0.01,0.01
+,Ash Statues(rachel),stamina,dense jumpstream,14.6,14.67,-0.07,0.07
+,CRIMSON FIGHTER x1.15,stamina,dense handstream,14.6,14.69,-0.09,0.09
+,Amatsukami x1.15,speed,high stream,14.6,14.68,-0.08,0.08
+,Lalala.Refrain(sp7v2) x1.1,speed,mid stream,14.6,14.68,-0.08,0.08
+,Tactical Railroad(ATTang),speed,high stream,14.6,14.17,0.43,0.43
+,Hayabusa(e8v3),jack,high chordjack,14.6,14.69,-0.09,0.09
+,Search And Destroy(Ena) x1.25,stamina,dense handstream,14.6,14.84,-0.24,0.24
+3755310,Death Melody(e8v2) x1.25,stamina,dense handstream,14.5,14.51,-0.01,0.01
+,Stay Alive (Zekk Remix) x1.25,speed,mid stream,14.5,14.69,-0.19,0.19
+,Paraclete -Miracle,speed,low stream,14.5,14.65,-0.15,0.15
+,Alpha,tech,stream tech,14.4,14.25,0.15,0.15
+,Ankoku Butoukai,tech,mix tech,14.4,14.18,0.22,0.22
+,Kaguyahime(mintapril) x1.2,tech,mix tech,14.4,14.18,0.22,0.22
+,Heaven's Fall(e7v3) x1.4,stamina,dense handstream,14.4,14.07,0.33,0.33
+,Ash Statues(wafles)[Passable],stamina,light jumpstream,14.4,14.15,0.25,0.25
+,STRONG 280(11bit),stamina,dense handstream,14.4,14.40,0.00,0.00
+,Pine Nut,speed,high stream,14.4,14.18,0.22,0.22
+,LiFE Garden(e7v3) x1.05,jack,high chordjack,14.4,14.27,0.13,0.13
+,Crescent Moon Boss Battle x1.05,tech,stream tech,14,14.02,-0.02,0.02
+,FUTURE DOMINATORS(delta) x1.3,stamina,dense handstream,14,14.00,0.00,0.00
+,Quadraphinix x1.5,stamina,dense handstream,14,14.01,-0.01,0.01
+,Volcanic(delta),speed,high stream,14,14.10,-0.10,0.10
+,STRONG 280(isxi),jack,dense chordjack,14,14.20,-0.20,0.20
+,Aquaris(snover) x1.3,jack,low chordjack,14,14.25,-0.25,0.25
+,Ascension to heaven(sp6v2) x0.975,speed,Unsigned,13.8,14.05,-0.25,0.25
+,Nhelv(Guilhermeziat),tech,jack tech,13.6,13.61,-0.01,0.01
+,Shadows of Cats(tachyon) x1.2,tech,stream tech,13.6,14.16,-0.56,0.56
+,The Empress(delta),stamina,dense handstream,13.6,13.28,0.32,0.32
+,Nopea,speed,mid stream,13.6,13.56,0.04,0.04
+,Pastel Subliminal,speed,Unsigned,13.5,13.57,-0.07,0.07
+,Extraction,tech,Unsigned,13.4,13.59,-0.19,0.19
+,Tornado [Devastation](interliser),tech,mix tech,13.4,13.22,0.18,0.18
+,Cyber Inductance(tachyon) x1.4,stamina,dense jumpstream,13.4,13.29,0.11,0.11
+3477045,Electric Angel(e5v3) x1.2,speed,high stream,13.4,13.29,0.11,0.11
+,Angel Dust(tachyon),speed,high stream,13.4,13.25,0.15,0.15
+,Defeat awaken battle ship,jack,high chordjack,13.4,13.62,-0.22,0.22
+,WE LUV LAMA(gamma) x1.2,stamina,dense jumpstream,13,13.03,-0.03,0.03
+,Reflec Streamz(gamma),speed,low stream,13,13.55,-0.55,0.55
+,Break(loved) x1.1,jack,high chordjack,13,13.28,-0.28,0.28
+,Sendan Life(OpakyL),jack,dense chordjack,13,13.28,-0.28,0.28
+,Unsan-musho,tech,stream tech,12.8,13.22,-0.42,0.42
+,Sonesaki Shinju(sp5v2) x0.925,speed,Unsigned,12.7,12.77,-0.07,0.07
+,Fastest Crash (gamma),tech,stream tech,12.6,12.57,0.03,0.03
+,Shinbatsu o Tadori Kyoukotsu ni Itaru(evening),stamina,dense jumpstream,12.6,12.53,0.07,0.07
+,The Truth Never Spoken,jack,mid chordjack,12.6,12.57,0.03,0.03
+,Bring Our Ignition Back x1.1,jack,mid chordjack,12.6,12.57,0.03,0.03
+,Japanese Transformation(fullerene),stamina,dense jumpstream,12.5,12.56,-0.06,0.06
+,Crystal World -Fracture-,speed,Unsigned,12.5,12.58,-0.08,0.08
+,IMAGE -MATERIAL- Version 0(luminal),stamina,light handstream,12.4,12.10,0.30,0.30
+,Lolit Speed,stamina,dense jumpstream,12.4,11.23,1.17,1.17
+,Pure Ruby,speed,Unsigned,12.4,12.10,0.30,0.30
+,Odin(fullerene),speed,high stream,12.4,12.44,-0.04,0.04
+,Mario Point[D-Hyper],speed,low stream,12.4,11.86,0.54,0.54
+,ZENITHALIZE,jack,high chordjack,12.4,12.52,-0.12,0.12
+,IMAGE -MATERIAL- Version 0(fullerene),stamina,light handstream,12.3,12.10,0.20,0.20
+,YELL!(e4v2),speed,Unsigned,12.2,12.11,0.09,0.09
+,Asymmetrical Grooves,tech,Unsigned,12,12.09,-0.09,0.09
+,Blue Planet,tech,stream tech,12,12.49,-0.49,0.49
+,Time to Say Goodbye(beta),stamina,dense jumpstream,12,12.11,-0.11,0.11
+,Amber Starlight(beta),speed,low stream,12,11.87,0.13,0.13
+,Paradigm Shift(beta),jack,high chordjack,12,12.09,-0.09,0.09
+,Edison(e3v3) x1.15,jack,mid chordjack,12,11.88,0.12,0.12
+,Akasha(sp3v2) x0.88,speed,Unsigned,11.7,11.22,0.48,0.48
+,End Time(e3v2) x1.1,speed,Unsigned,11.5,11.23,0.27,0.27
+,INTERNET OVERDOSE x1.05,tech,stream tech,11.4,12.08,-0.68,0.68
+,Enthanasia x1.05,speed,Unsigned,11.2,11.26,-0.06,0.06
+,LazorBeamz,stamina,light jumpstream,11,11.23,-0.23,0.23
+,Makiba(alpha),speed,low stream,11,11.84,-0.84,0.84
+,Dark Sambaland,jack,high chordjack,11,10.91,0.09,0.09
+,Odoru Mizushibuki x1.1,tech,jack tech,10.8,10.92,-0.12,0.12
+,Towards the Horizon,tech,Unsigned,10.8,11.20,-0.40,0.40
+,P8107 x0.95,speed,low stream,10.8,11.86,-1.06,1.06
+,Message(e2v2),speed,low stream,10.7,10.35,0.35,0.35
+,Moment x1.05,jack,high chordjack,10.6,10.36,0.24,0.24
+,Shin Takarajim(sp2v2),speed,Unsigned,10.5,10.36,0.14,0.14
+,Torikago,speed,mid stream,10.4,10.37,0.03,0.03
+,The Lost Dedicated(loved),jack,high chordjack,10.4,10.58,-0.18,0.18
+,Eiya no Parade x1.05,speed,low stream,10.3,10.38,-0.08,0.08
+,Dope Monkeys x1.02,speed,low stream,10.1,9.22,0.88,0.88
+,Tailin no Soul x1.2,tech,stream tech,10,9.51,0.49,0.49
+,Rave 7 [Hard] x1.1,tech,stream tech,10,11.20,-1.20,1.20
+,Chandelier(10),stamina,dense jumpstream,10,10.38,-0.38,0.38
+,Oh Curry! x0.9,speed,staircase,10,9.23,0.77,0.77
+,The Lost Dedicated(10),jack,high chordjack,10,10.59,-0.59,0.59
+,Cicadidae,tech,stream tech,9,9.19,-0.19,0.19
+,Firmament Castle Velier(9) x1.05,stamina,dense jumpstream,9,9.25,-0.25,0.25
+,Disconnected Trance(9),speed,low stream,9,8.39,0.61,0.61
+,Scorpion Dance,jack,high chordjack,9,9.48,-0.48,0.48
+,Can't Take my Eyes,jack,low chordjack,9,9.13,-0.13,0.13
+,RATO,tech,stream tech,8,8.34,-0.34,0.34
+,Anguish(8),stamina,dense jumpstream,8,9.17,-1.17,1.17
+,Trickstarz,speed,staircase,8,8.31,-0.31,0.31
+,To The Limit(8),jack,high chordjack,8,8.35,-0.35,0.35
+,WAVE,tech,mix tech,7,6.97,0.03,0.03
+,Hymn,stamina,light jumpstream,7,6.71,0.29,0.29
+,Last Chance,jack,Unsigned,7,6.67,0.33,0.33
+,Five Five Five Guys,speed,low stream,6.6,6.58,0.02,0.02
+,M-A[Expert Lv.15],stamina,dense jumpstream,6.2,6.69,-0.49,0.49
+,The Bird's Midair Heatstroke,tech,Unsigned,6,5.68,0.32,0.32
+,Luv Lab 22ate!,speed,mid stream,6,5.97,0.03,0.03
+,SOS,speed,mid stream,6,5.97,0.03,0.03
+,Sweet Cherry X,jack,Unsigned,6,5.61,0.39,0.39
+,Back to the Gate[Lv.5100],stamina,dense jumpstream,6,5.97,0.03,0.03
+,Brainfog,tech,Unsigned,5,4.97,0.03,0.03
+,Elektric U-Phoria,stamina,dense jumpstream,5,5.63,-0.63,0.63
+,Palette GAMMA[Abstract],speed,low stream,5,4.97,0.03,0.03
+,TDPDG,speed,low stream,5,4.99,0.01,0.01
+,Energy Flower 3007,jack,Unsigned,5,4.98,0.02,0.02
+,Angel Of Darkness,stamina,light jumpstream,4.2,4.14,0.06,0.06
+,Ephemera,tech,Unsigned,4,3.99,0.01,0.01
+,Shannon's Theorem,tech,stream tech,4,4.07,-0.07,0.07
+,CrossOver,jack,Unsigned,4,3.34,0.66,0.66
+,Kirlian Shores,tech,Unsigned,3,2.02,0.98,0.98
+,True Blue,stamina,Unsigned,3,3.37,-0.37,0.37
+,Entelechia,speed,mid stream,3,3.37,-0.37,0.37
+,Dimension Trippere!!!!,jack,Unsigned,3,3.01,-0.01,0.01
+,Vermillion,tech,Unsigned,2,2.04,-0.04,0.04
+,Eternal Drain,stamina,Unsigned,2,2.00,0.00,0.00
+,Snow Storm,speed,Unsigned,2,2.00,0.00,0.00
+,Flashes,jack,Unsigned,2,1.97,0.03,0.03
+,Want U 2,tech,Unsigned,1,0.99,0.01,0.01
+,Tommorow Perfume,stamina,Unsigned,1,2.01,-1.01,1.01
+,Shelter,speed,Unsigned,1,1.03,-0.03,0.03
+,Miracle Chance,jack,Unsigned,1,1.03,-0.03,0.03
+3079544,Night Club Junkie x0.95,speed,low stream,14.6,14.68,-0.08,0.08
+3079545,Night Club Junkie,speed,low stream,15,15.00,0.00,0.00
+3933034,kizuato x1.25,speed,staircase,15.8,15.89,-0.09,0.09
+3933037,kizuato x1.3,speed,staircase,16.2,16.25,-0.05,0.05
+4692665,Everything Black x0.95,speed,high stream,14.8,14.70,0.10,0.10
+4692669,Everything Black,speed,high stream,15.2,15.02,0.18,0.18
+1455989,Moon Gate,speed,high stream,13,12.46,0.54,0.54
+5111540,angel dust,stamina,light handstream,16.4,16.43,-0.03,0.03
+5195389,Lolit Speed x1.13,stamina,dense jumpstream,14,13.62,0.38,0.38
+1305297,Tornado,tech,jacky tech,13.4,13.22,0.18,0.18
+2196118,Kaguyahime x1.2,tech,jacky tech,14.4,14.18,0.22,0.22
+1065834,Big Brother,tech,stream tech,10,10.33,-0.33,0.33
+2877294,STRONG 280,stamina,dense handstream,14.4,14.40,0.00,0.00
+716700,slavik goblins,stamina,dense handstream,13.7,13.63,0.07,0.07
+1429738,star of andromeda,jack,low chordjack,11,10.35,0.65,0.65
+3150955,star of andromeda x1.1,jack,low chordjack,13,11.86,1.14,1.14
+3150957,star of andromeda x1.2,jack,low chordjack,14,13.43,0.57,0.57
+3150959,star of andromeda x1.3,jack,low chordjack,15,14.64,0.36,0.36
+3580775,star of andromeda x1.4,jack,low chordjack,16,15.64,0.36,0.36
+2552927,paranoia,jack,low chordjack,10,10.29,-0.29,0.29
+3260902,The Truth Never Spoken,jack,mid chordjack,12.6,12.57,0.03,0.03
+2308001,Vertex Beta,jack,mid chordjack,15.8,15.65,0.15,0.15
+4706643,EVERYTHING BLACK,jack,high chordjack,13.6,14.19,-0.59,0.59
+3535951,Heaven's Fall x1.3,stamina,dense handstream,13.6,13.55,0.05,0.05
+3107371,Rude Buster (Camellia Remix),stamina,dense handstream,14,13.82,0.18,0.18
+3107368,Rude Buster (Camellia Remix) x1.1,stamina,dense handstream,15,14.69,0.31,0.31
+1937582,Love is War x1.3,stamina,dense handstream,13.6,13.83,-0.23,0.23
+2553924,ametsuchi x1.2,jack,low chordjack,8.6,8.29,0.31,0.31
+,Oceanus(xfpsb1),ln,hybrid,9.5,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+,Otenba Koimusume,ln,density,9.5,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+,Gunjou Infinity [Buffed] (Cut),ln,speed,9.5,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+,Orca [Broken-],ln,tech,9.5,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+,Hanatachi ni Kibouwo 1.15x,ln,hybrid,10.5,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+,Akasha 1.05x,ln,density,10.5,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+,Ano Yume o Nazotte (Cut) 1.15x,ln,speed,10.5,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+,Yoru ni Kakeru (xfpsb2 Cut) 1.05x,ln,tech,10.5,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+,L4.8TS,ln,hybrid,11.5,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+,Utakatayo Ikanaide [LN Edit] (Cut) 1.265x,ln,density,11.5,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+,bullet 1.15x,ln,speed,11.5,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+,HAMELN [Fanger] (Cut),ln,tech,11.5,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+,Aegleseeker [Galaxy+],ln,hybrid,12.5,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+,finorza (Cut),ln,density,12.5,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+,Kokoro no Shitsuryou (Edit),ln,speed,12.5,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+,Unmei no Haguruma (Edit),ln,tech,12.5,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+,ReviveR,ln,hybrid,13.5,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+,Unleashed World 1.075x,ln,density,13.5,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+,Kairikou 1.125x,ln,speed,13.5,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+,Identity Part 5 1.05x,ln,tech,13.5,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+,Exitium 1.025x,ln,hybrid,14.5,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+,Ultrasonic Anthem [Ultimate+] 1.1x,ln,density,14.5,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+,Decoy 1.025x,ln,speed,14.5,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+,Flamewall (Cut) [Edit] 1.15x,ln,tech,14.5,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+,Snow Drive (Cut) 1.225x,ln,hybrid,15.5,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+,Kaku mo Yuubi na Hi to Narite (Cut) 1.1x,ln,density,15.5,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+,Tojita Sekai (xfpsbF Cut),ln,speed,15.5,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+,Shuu no Hazama (xfpsbF Cut) 1.15x,ln,tech,15.5,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4608742,Various Artists - 4K LN Dan Courses v2 ~ Stage 1 Map Pack ~ [Doki Doki Literature Club! ~ 2nd ~ (Marathon)],ln,hybrid,2,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4608744,Various Artists - 4K LN Dan Courses v2 ~ Stage 1 Map Pack ~ [Hitorigoto ~ 1st ~ (Marathon)],ln,hybrid,1,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4608739,Various Artists - 4K LN Dan Courses v2 ~ Stage 1 Map Pack ~ [aura ~ 3rd ~ (Marathon)],ln,hybrid,3,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4608750,Various Artists - 4K LN Dan Courses v2 ~ Stage 1 Map Pack ~ [Otenba Koimusume ~ 4th ~ (Marathon)],ln,hybrid,4,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4608751,Various Artists - 4K LN Dan Courses v2 ~ Stage 1 Map Pack ~ [Pink Gold ~ 5th ~ (Marathon)],ln,hybrid,5,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4608745,Various Artists - 4K LN Dan Courses v2 ~ Stage 1 Map Pack ~ [Koborezu no Negaigoto ~ 6th ~ (Marathon)],ln,hybrid,6,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4608749,Various Artists - 4K LN Dan Courses v2 ~ Stage 1 Map Pack ~ [Missing Banquet ~ 8th ~ (Marathon)],ln,hybrid,8,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4608752,Various Artists - 4K LN Dan Courses v2 ~ Stage 1 Map Pack ~ [Rock It ~ 7th ~ (Marathon)],ln,hybrid,7,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4608741,Various Artists - 4K LN Dan Courses v2 ~ Stage 1 Map Pack ~ [Dodger's Gadget ~ 9th ~ (Marathon)],ln,hybrid,9,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4614499,Various Artists - 4K LN Dan Courses v2 ~ Stage 1 Map Pack ~ [towa no maigo 1.1x ~ 10th ~ (Marathon)],ln,hybrid,10,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4608747,Various Artists - 4K LN Dan Courses v2 ~ Stage 1 Map Pack ~ [Kyouki Ranmai ~ Yoru ~ (Marathon)],ln,hybrid,13,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4608743,Various Artists - 4K LN Dan Courses v2 ~ Stage 1 Map Pack ~ [Enigma 1.1x ~ Yoake ~ (Marathon)],ln,hybrid,11,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4608740,Various Artists - 4K LN Dan Courses v2 ~ Stage 1 Map Pack ~ [Carnation [ck remix] 1.05x ~ Yuugure ~ (Marathon)],ln,hybrid,12,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4608753,Various Artists - 4K LN Dan Courses v2 ~ Stage 1 Map Pack ~ [Protoflicker 1.25x ~ Yokaze ~ (Marathon)],ln,hybrid,16,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4608748,Various Artists - 4K LN Dan Courses v2 ~ Stage 1 Map Pack ~ [Mare Nectaris ~ Yami ~ (Marathon)],ln,hybrid,14,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4608746,Various Artists - 4K LN Dan Courses v2 ~ Stage 1 Map Pack ~ [Kodoku no Kakurenbo 1.15x ~ Yume ~ (Marathon)],ln,hybrid,15,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4608999,Various Artists - 4K LN Dan Courses v2 ~ Stage 2 Map Pack ~ [Dango Daikazoku ~ 1st ~ (Marathon)],ln,release,1,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4614497,Various Artists - 4K LN Dan Courses v2 ~ Stage 2 Map Pack ~ [SPF 420 ~ 2nd ~ (Marathon)],ln,release,2,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4609008,Various Artists - 4K LN Dan Courses v2 ~ Stage 2 Map Pack ~ [Power To Progress ~ 6th ~ (Marathon)],ln,release,6,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4609001,Various Artists - 4K LN Dan Courses v2 ~ Stage 2 Map Pack ~ [Gee ~ 4th ~ (Marathon)],ln,release,4,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4609011,Various Artists - 4K LN Dan Courses v2 ~ Stage 2 Map Pack ~ [silver temple ~ 3rd ~ (Marathon)],ln,release,3,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4609004,Various Artists - 4K LN Dan Courses v2 ~ Stage 2 Map Pack ~ [MilK ~ 5th ~ (Marathon)],ln,release,5,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4609010,Various Artists - 4K LN Dan Courses v2 ~ Stage 2 Map Pack ~ [Shotgun Senorita [Zardonic Remix] ~ 8th ~ (Marathon)],ln,release,8,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4609007,Various Artists - 4K LN Dan Courses v2 ~ Stage 2 Map Pack ~ [On the FM ~ 7th ~ (Marathon)],ln,release,7,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4609009,Various Artists - 4K LN Dan Courses v2 ~ Stage 2 Map Pack ~ [Raijin no Hidariude ~ 9th ~ (Marathon)],ln,release,9,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4609000,Various Artists - 4K LN Dan Courses v2 ~ Stage 2 Map Pack ~ [Dopamine ~ 10th ~ (Marathon)],ln,release,10,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4609006,Various Artists - 4K LN Dan Courses v2 ~ Stage 2 Map Pack ~ [No. 6 ~ Yuugure ~ (Marathon)],ln,tech,12,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4608998,Various Artists - 4K LN Dan Courses v2 ~ Stage 2 Map Pack ~ [Avalon no oka ~ Yoake ~ (Marathon)],ln,inverse,11,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4609003,Various Artists - 4K LN Dan Courses v2 ~ Stage 2 Map Pack ~ [Intersect Thunderbolt -Remix ~ Yoru ~ (Marathon)],ln,tech,13,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4609002,Various Artists - 4K LN Dan Courses v2 ~ Stage 2 Map Pack ~ [Inaiinai isonshou 1.25x ~ Yume ~ (Marathon)],ln,tech,15,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4609005,Various Artists - 4K LN Dan Courses v2 ~ Stage 2 Map Pack ~ [Nhelv 1.05x ~ Yami ~ (Marathon)],ln,tech,14,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4609012,Various Artists - 4K LN Dan Courses v2 ~ Stage 2 Map Pack ~ [Cinderella Cage -Trancecore Mix- 1.6x ~ Yokaze ~ (Marathon)],ln,tech,16,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4609086,Various Artists - 4K LN Dan Courses v2 ~ Stage 3 Map Pack ~ [Nerevar Rising ~ 1st ~ (Marathon)],ln,inverse,1,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4609080,Various Artists - 4K LN Dan Courses v2 ~ Stage 3 Map Pack ~ [Heartbeats ~ 2nd ~ (Marathon)],ln,inverse,2,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4609079,Various Artists - 4K LN Dan Courses v2 ~ Stage 3 Map Pack ~ [future gazer ~ 4th ~ (Marathon)],ln,inverse,4,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4609081,Various Artists - 4K LN Dan Courses v2 ~ Stage 3 Map Pack ~ [i use raw expectation to unlock placebo. ~ 3rd ~ (Marathon)],ln,inverse,3,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4609076,Various Artists - 4K LN Dan Courses v2 ~ Stage 3 Map Pack ~ [ 3 ~ 7th ~ (Marathon)],ln,inverse,7,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4609085,Various Artists - 4K LN Dan Courses v2 ~ Stage 3 Map Pack ~ [Mousou Express [Remix] ~ 6th ~ (Marathon)],ln,inverse,6,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4609087,Various Artists - 4K LN Dan Courses v2 ~ Stage 3 Map Pack ~ [Promise ~ 5th ~ (Marathon)],ln,inverse,5,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4609088,Various Artists - 4K LN Dan Courses v2 ~ Stage 3 Map Pack ~ [Sakase natsuzora koi no hana. ~ 8th ~ (Marathon)],ln,inverse,8,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4609077,Various Artists - 4K LN Dan Courses v2 ~ Stage 3 Map Pack ~ [cold planet ~ 9th ~ (Marathon)],ln,inverse,9,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4609084,Various Artists - 4K LN Dan Courses v2 ~ Stage 3 Map Pack ~ [Love is War ~ Yoake ~ (Marathon)],ln,density,11,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4609089,Various Artists - 4K LN Dan Courses v2 ~ Stage 3 Map Pack ~ [Sakura Trip 1.15x ~ 10th ~ (Marathon)],ln,inverse,10,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4609078,Various Artists - 4K LN Dan Courses v2 ~ Stage 3 Map Pack ~ [ENDYMION ~ Yuugure ~ (Marathon)],ln,density,12,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4609083,Various Artists - 4K LN Dan Courses v2 ~ Stage 3 Map Pack ~ [Literal Crystal In The Cyphisonia 1.15x ~ Yoru ~],ln,density,13,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4609082,Various Artists - 4K LN Dan Courses v2 ~ Stage 3 Map Pack ~ [Indomitable Spirit [Hommarju Remix] 1.5x ~ Yami ~ (Marathon)],ln,density,14,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4614495,Various Artists - 4K LN Dan Courses v2 ~ Stage 3 Map Pack ~ [Lancelot -Flame of the Rebellion- 1.35x ~ Yokaze ~ (Marathon)],ln,density,16,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4609090,Various Artists - 4K LN Dan Courses v2 ~ Stage 3 Map Pack ~ [White Hair Little Swords Girl 1.025x ~ Yume ~ (Marathon)],ln,density,15,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4609231,Various Artists - 4K LN Dan Courses v2 ~ Stage 4 Map Pack ~ [Trickl4sh 220 ~ 1st ~ (Marathon)],ln,density,1,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4609229,Various Artists - 4K LN Dan Courses v2 ~ Stage 4 Map Pack ~ [Rockhill ~ 2nd ~ (Marathon)],ln,density,2,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4609227,Various Artists - 4K LN Dan Courses v2 ~ Stage 4 Map Pack ~ [OVERDRIVERS ~ 3rd ~ (Marathon)],ln,density,3,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4609221,Various Artists - 4K LN Dan Courses v2 ~ Stage 4 Map Pack ~ [Blacksphere ~ 5th ~ (Marathon)],ln,density,5,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4609217,Various Artists - 4K LN Dan Courses v2 ~ Stage 4 Map Pack ~ [#FairyJoke #SDVX_Edit ~ 4th ~ (Marathon)],ln,density,4,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4609220,Various Artists - 4K LN Dan Courses v2 ~ Stage 4 Map Pack ~ [Berry Go!! ~ 6th ~ (Marathon)],ln,density,6,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4609228,Various Artists - 4K LN Dan Courses v2 ~ Stage 4 Map Pack ~ [Owari to Hajimari no Oto ~ 8th ~ (Marathon)],ln,density,8,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4614493,Various Artists - 4K LN Dan Courses v2 ~ Stage 4 Map Pack ~ [Tsumibito ~ 7th ~ (Marathon)],ln,density,7,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4609226,Various Artists - 4K LN Dan Courses v2 ~ Stage 4 Map Pack ~ [Ordinary world ~ 9th ~ (Marathon)],ln,density,9,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4609222,Various Artists - 4K LN Dan Courses v2 ~ Stage 4 Map Pack ~ [Element of SPADA 1.1x ~ 10th ~ (Marathon)],ln,speed,12,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4609222,Various Artists - 4K LN Dan Courses v2 ~ Stage 4 Map Pack ~ [Element of SPADA 1.1x ~ 10th ~ (Marathon)] (4609222),ln,density,10,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4609219,Various Artists - 4K LN Dan Courses v2 ~ Stage 4 Map Pack ~ [asphyxia 1.05x ~ Yoake ~ (Marathon)],ln,speed,11,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4609230,Various Artists - 4K LN Dan Courses v2 ~ Stage 4 Map Pack ~ [The lost ~ Yami ~ (Marathon)],ln,speed,14,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4609225,Various Artists - 4K LN Dan Courses v2 ~ Stage 4 Map Pack ~ [NUCLEAR-STAR ~ Yume ~ (Marathon)],ln,speed,15,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4609224,Various Artists - 4K LN Dan Courses v2 ~ Stage 4 Map Pack ~ [NEURO-CLOUD-9 ~ Yoru ~ (Marathon)],ln,speed,13,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4609232,Various Artists - 4K LN Dan Courses v2 ~ Stage 4 Map Pack ~ [R U Still xxxx 1.15x ~ Yokaze ~ (Marathon)],ln,speed,16,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4351661,Laur - Kokushi musou [World's Final End (17th edit)],ln,Unsigned,17,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4517847,Ludicin - Onus Rēgulus [In Abyss],ln,Unsigned,17,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+5029140,Various Artist - 4K LN Dan Courses - EXTRA - [17th Dan - Yeehee (Marathon)],ln,Unsigned,17,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+5366651,Ludicin - Blossom of Ashes [Divination of Calamity],ln,density,14.5,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+5366777,takehirotei - 定时地狱 ~The Perpetual Chaotically Unsynced Pendulum~ [Convergence],ln,Unsigned,14,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4824023,Laur - 国士無双 [LN bukbuk],ln,Unsigned,14.8,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4732296,ウォルピスカーター - Oxalis [Imitation],ln,Unsigned,13.6,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4652576,Xyris - Eviternity [LN Eviternity],ln,Unsigned,14.4,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+3793375,ああ…翡翠茶漬け… - stεganography [Cipher Encryption],ln,Unsigned,13.8,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4398536,Various Artists - Begin's 4K LN Pack Level 3 [Nanahoshi Kangengakudan - Andromeda],ln,density,15.2,Invalid: LN benchmark rows are skipped by Azusa RC scope,,
+4398537,Various Artists - Begin's 4K LN Pack Level 3 [ROKINA - Icicle Stinger],ln,density,15.4,Invalid: LN benchmark rows are skipped by Azusa RC scope,,

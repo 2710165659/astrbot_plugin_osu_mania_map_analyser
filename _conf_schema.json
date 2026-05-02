@@ -1,0 +1,116 @@
+{
+  "max_concurrency": {
+    "description": "最大并发任务数",
+    "type": "int",
+    "hint": "允许多少个分析任务同时执行。浏览器本身会复用一个常驻 Chromium 实例，当前最大支持 5，超出会自动按 5 处理。",
+    "default": 5
+  },
+  "render_timeout_seconds": {
+    "description": "单个渲染超时时间，单位秒",
+    "type": "int",
+    "hint": "从下载 .osu 到 Playwright 截图完成的总超时时间。",
+    "default": 120
+  },
+  "capture_target": {
+    "description": "截图目标",
+    "type": "string",
+    "hint": "可选值：full_card、graph_only。full_card 会输出整张分析卡片，graph_only 只截主体图表区域。",
+    "default": "full_card"
+  },
+  "content_bar": {
+    "description": "卡片主体内容",
+    "type": "string",
+    "hint": "默认与原项目一致为 Auto。可选值：None、Auto、Pattern、Etterna、Graph。",
+    "default": "Auto"
+  },
+  "sr_text": {
+    "description": "左上角胶囊内容",
+    "type": "string",
+    "hint": "可选值：ReworkSR、MSD、Pattern、InterludeSR、Auto。",
+    "default": "Auto"
+  },
+  "diff_text": {
+    "description": "右上角区域内容",
+    "type": "string",
+    "hint": "可选值：Difficulty、Graph、MSD、Pattern、ReworkSR、InterludeSR、None。",
+    "default": "Difficulty"
+  },
+  "estimator_algorithm": {
+    "description": "估算算法",
+    "type": "string",
+    "hint": "可选值：Mixed、Azusa、Sunny、Daniel、Companella。",
+    "default": "Mixed"
+  },
+  "etterna_version": {
+    "description": "全局 Etterna 版本",
+    "type": "string",
+    "hint": "可选值：0.68.0-Unofficial、0.70.0、0.72.0、0.72.3、0.74.0。",
+    "default": "0.72.3"
+  },
+  "companella_etterna_version": {
+    "description": "Companella Etterna 版本",
+    "type": "string",
+    "hint": "仅用于 Companella 算法，默认 0.74.0。",
+    "default": "0.74.0"
+  },
+  "enable_numeric_difficulty": {
+    "description": "显示数值化难度",
+    "type": "bool",
+    "hint": "开启后会在支持的 RC 难度算法下展示数值难度。",
+    "default": true
+  },
+  "enable_etterna_rainbow_bars": {
+    "description": "Etterna 彩虹条",
+    "type": "bool",
+    "hint": "主体内容为 Etterna 时是否启用彩虹条样式。",
+    "default": true
+  },
+  "show_mode_tag_capsule": {
+    "description": "显示模式标签胶囊",
+    "type": "bool",
+    "hint": "控制底部 HB/RC/LN/Mix/SV 标签是否显示。",
+    "default": true
+  },
+  "vibro_detection": {
+    "description": "启用 Vibro 检测",
+    "type": "bool",
+    "hint": "保留原项目的 Vibro 检测逻辑。",
+    "default": true
+  },
+  "debug_use_amount": {
+    "description": "Use Amount For Category",
+    "type": "bool",
+    "hint": "对应原项目调试开关。",
+    "default": false
+  },
+  "debug_use_sv_detection": {
+    "description": "SV Detection",
+    "type": "bool",
+    "hint": "对应原项目实验性 SV 检测开关。",
+    "default": false
+  },
+  "azusa_sunny_reference_ho": {
+    "description": "Azusa Sunny Reference Force HO",
+    "type": "bool",
+    "hint": "对应原项目设置项，默认开启。",
+    "default": true
+  },
+  "card_opacity": {
+    "description": "卡片透明度",
+    "type": "string",
+    "hint": "可选值：100%、95%、90%、80%、70%。",
+    "default": "95%"
+  },
+  "card_blur": {
+    "description": "卡片模糊强度",
+    "type": "string",
+    "hint": "可选值：Off、Soft、Strong。",
+    "default": "Soft"
+  },
+  "card_radius": {
+    "description": "卡片圆角",
+    "type": "string",
+    "hint": "可选值：Small、Medium、Large。",
+    "default": "Medium"
+  }
+}
