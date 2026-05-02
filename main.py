@@ -96,7 +96,7 @@ class ManiaMapAnalyserPlugin(Star):
     async def render_map_analysis(self, event: AstrMessageEvent):
         """统一处理 /ma 与 /mag 指令"""
 
-        raw_text = str(getattr(event, "message_str", "") or "")
+        raw_text = str(getattr(getattr(event, "message_obj", None), "message_str", "") or "")
         matched = MA_REQUEST_RE.match(raw_text)
         if not matched:
             return
