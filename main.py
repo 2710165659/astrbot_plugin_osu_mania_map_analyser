@@ -13,8 +13,8 @@ PLUGIN_ROOT = Path(__file__).resolve().parent
 if str(PLUGIN_ROOT) not in sys.path:
     sys.path.insert(0, str(PLUGIN_ROOT))
 
-from service.service_mania_map_analyser import ManiaMapAnalyserService
-from service.errors import ManiaMapAnalyserError
+from ma_service.service_mania_map_analyser import ManiaMapAnalyserService
+from ma_service.errors import ManiaMapAnalyserError
 
 HELP_TEXT = "\n".join(
     [
