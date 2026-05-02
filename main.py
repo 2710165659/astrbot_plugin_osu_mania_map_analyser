@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import shlex
 import sys
 from pathlib import Path
 
@@ -16,15 +17,30 @@ if str(PLUGIN_ROOT) not in sys.path:
 from ma_service.service_mania_map_analyser import ManiaMapAnalyserService
 from ma_service.errors import ManiaMapAnalyserError
 
+MODE_FLAG_TO_CONTENT_BAR = {
+    "-n": "None",
+    "-a": "Auto",
+    "-p": "Pattern",
+    "-e": "Etterna",
+    "-g": "Graph",
+}
+
 HELP_TEXT = "\n".join(
     [
+        "osu!mania 谱面分析",
+        "",
+        "基于 osumania_map_analyser 实现本项目，可以分析键型，预估对应rf/ln段位",
+        "",
         "用法：",
-        "/ma <bid> 默认模式（Auto）",
-        "/map <bid> Pattern",
-        "/mae <bid> Etterna",
-        "/mag <bid> Graph",
-        "/ma help 查看帮助",
-        "仅支持纯数字 bid",
+        "/ma <bid>     默认，等同于-a",
+        "/ma -n <bid>  None，主体不显示任何内容，即短卡片模式",
+        "/ma -a <bid>  Auto，主体内容按 LN 占比自动选择 Pattern 或 Etterna",
+        "/ma -p <bid>  Pattern，主体显示键型分析",
+        "/ma -e <bid>  Etterna，主体显示 Etterna 7 大键型分",
+        "/ma -g <bid>  Graph，主体显示难度变化图",
+        "/ma help      查看本帮助",
+        "",
+        "注：对于非4/6/7K谱面，主体内容将自动回退为Pattern显示。",
     ]
 )
 
@@ -68,33 +84,25 @@ class ManiaMapAnalyserPlugin(Star):
         self._render_semaphore = asyncio.Semaphore(self.max_concurrency)
 
     @filter.command("ma", alias={"mania分析", "谱面分析"})
-    async def render_map_analysis(self, event: AstrMessageEvent, bid: str = ""):
+    async def render_map_analysis(
+        self,
+        event: AstrMessageEvent,
+        first: str = "",
+        second: str = "",
+    ):
         """按 beatmap id 渲染 osumania_map_analyser 图表"""
 
-        normalized = str(bid or "").strip()
-        if not normalized or normalized.lower() == "help":
+        try:
+            bid, render_overrides = self._parse_ma_command(first, second)
+        except ManiaMapAnalyserError as exc:
+            yield event.plain_result(str(exc))
+            return
+
+        if bid is None:
             yield event.plain_result(HELP_TEXT)
             return
 
-        yield await self._render_result(event, normalized)
-
-    @filter.command("map")
-    async def render_pattern_analysis(self, event: AstrMessageEvent, bid: str):
-        """按 beatmap id 渲染 Pattern 主体内容"""
-
-        yield await self._render_result(event, bid, {"contentBar": "Pattern"})
-
-    @filter.command("mae")
-    async def render_etterna_analysis(self, event: AstrMessageEvent, bid: str):
-        """按 beatmap id 渲染 Etterna 主体内容"""
-
-        yield await self._render_result(event, bid, {"contentBar": "Etterna"})
-
-    @filter.command("mag")
-    async def render_graph_analysis(self, event: AstrMessageEvent, bid: str):
-        """按 beatmap id 渲染 Graph 主体内容"""
-
-        yield await self._render_result(event, bid, {"contentBar": "Graph"})
+        yield await self._render_result(event, bid, render_overrides)
 
     async def _render_result(
         self,
@@ -133,3 +141,46 @@ class ManiaMapAnalyserPlugin(Star):
             Comp.Image.fromFileSystem(image_path),
         ]
         return event.chain_result(chain)
+
+    def _parse_ma_command(
+        self,
+        first: str = "",
+        second: str = "",
+    ) -> tuple[str | None, dict[str, str] | None]:
+        raw_argument_text = " ".join(
+            part.strip()
+            for part in [str(first or ""), str(second or "")]
+            if part and str(part).strip()
+        )
+        if not raw_argument_text:
+            return None, None
+
+        try:
+            tokens = shlex.split(raw_argument_text, posix=False)
+        except ValueError as exc:
+            raise ManiaMapAnalyserError(f"命令参数解析失败：{exc}") from exc
+
+        if not tokens:
+            return None, None
+
+        command = tokens[0].strip().lower()
+        if command in {"help", "-h", "--help"}:
+            return None, None
+
+        if len(tokens) == 1:
+            return tokens[0].strip(), {"contentBar": "Auto"}
+
+        if len(tokens) != 2:
+            raise ManiaMapAnalyserError(
+                "命令格式不正确。示例：/ma 5199917、/ma -a 5199917、/ma -g 5199917"
+            )
+
+        mode_flag = tokens[0].strip().lower()
+        bid = tokens[1].strip()
+        content_bar = MODE_FLAG_TO_CONTENT_BAR.get(mode_flag)
+        if content_bar is None:
+            raise ManiaMapAnalyserError(
+                "未知模式参数，仅支持 -n、-a、-p、-e、-g。示例：/ma -p 5199917"
+            )
+
+        return bid, {"contentBar": content_bar}

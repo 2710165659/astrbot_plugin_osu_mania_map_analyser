@@ -1,17 +1,14 @@
 from __future__ import annotations
 
-import hashlib
-import json
 import re
 import tempfile
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 from .browser_runtime import ChromiumRenderRuntime, RenderRequest
 from .downloader import download_beatmap_file
 from .errors import ManiaMapAnalyserError, NonManiaBeatmapError
-
-BRIDGE_VERSION = 3
 
 
 class ManiaMapAnalyserService:
@@ -35,16 +32,7 @@ class ManiaMapAnalyserService:
     ) -> dict[str, Any]:
         bid = self._extract_bid(bid_input)
         effective_render_settings = self._build_effective_render_settings(render_overrides or {})
-        cache_key = self._build_cache_key(bid, effective_render_settings)
-        output_path = self.temp_root / "outputs" / f"{bid}_{cache_key[:16]}.png"
-
-        if output_path.is_file() and output_path.stat().st_size > 0:
-            return {
-                "status": "success",
-                "msg": f"cache hit for bid {bid}",
-                "image_path": str(output_path.resolve()),
-                "cached": True,
-            }
+        output_path = self.temp_root / "outputs" / f"{bid}_{uuid4().hex[:16]}.png"
 
         beatmap_path = download_beatmap_file(
             bid=bid,
@@ -79,7 +67,6 @@ class ManiaMapAnalyserService:
             "status": "success",
             "msg": f"rendered chart successfully for bid {bid}",
             "image_path": str(output_path.resolve()),
-            "cached": False,
         }
 
     def _extract_bid(self, bid_input: str) -> str:
@@ -87,16 +74,7 @@ class ManiaMapAnalyserService:
         if raw.isdigit():
             return raw
 
-        raise ManiaMapAnalyserError("只支持纯数字 bid，例如：/ma 5199917")
-
-    def _build_cache_key(self, bid: str, render_settings: dict[str, Any]) -> str:
-        payload = {
-            "bid": bid,
-            "bridgeVersion": BRIDGE_VERSION,
-            "renderSettings": render_settings,
-        }
-        serialized = json.dumps(payload, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
-        return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+        raise ManiaMapAnalyserError("只支持纯数字bid，例如：/ma 5199917 或 /ma -g 5199917")
 
     def _extract_beatmap_mode(self, osu_text: str) -> int | None:
         match = re.search(r"(?mi)^\s*Mode\s*:\s*(\d+)\s*$", osu_text)

@@ -20,7 +20,7 @@
   "content_bar": {
     "description": "卡片主体内容",
     "type": "string",
-    "hint": "默认与原项目一致为 Auto。可选值：None、Auto、Pattern、Etterna、Graph。",
+    "hint": "可选值：None、Auto、Pattern、Etterna、Graph。命令中可通过 /ma -n、-a、-p、-e、-g 覆盖；/ma <bid> 默认等同 /ma -a <bid>。",
     "default": "Auto"
   },
   "sr_text": {
