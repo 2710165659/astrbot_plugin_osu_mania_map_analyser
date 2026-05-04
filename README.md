@@ -1,8 +1,10 @@
 # astrbot_plugin_osu_mania_map_analyser
 
-AstrBot 插件版 `osumania_map_analyser`。机器人可通过 `/ma <bid>` 下载 `.osu`、用 Playwright 驱动常驻 Chromium 渲染图表，并返回 PNG 图片。
+AstrBot 插件版 `osumania_map_analyser`。机器人可通过 `/ma <bid>` 下载 `.osu`、用 Playwright 驱动常驻 Chromium 渲染图表，并返回 PNG 图片。![效果图](image.png)
 
 原始项目地址：<https://github.com/LeoBlackMT/osumania_map_analyser>
+
+> osumania_map_analyser文件即为原始项目文件(head 5dbd97c)，未改动，受astrbot插件安装行为限制，未采用submodule。
 
 ## 安装
 

@@ -1,14 +1,14 @@
-import { fetchBeatmapFile } from "./js/app/analysis.js";
-import { state } from "./js/app/appContext.js";
-import { startGraphAnimationLoop } from "./js/app/graph.js";
+import { fetchBeatmapFile } from "../osumania_map_analyser/ManiaMapAnalyser by Leo_Black/js/app/analysis.js";
+import { state } from "../osumania_map_analyser/ManiaMapAnalyser by Leo_Black/js/app/appContext.js";
+import { startGraphAnimationLoop } from "../osumania_map_analyser/ManiaMapAnalyser by Leo_Black/js/app/graph.js";
 import {
     hideOverlay,
     setStatus,
     updateCardPlayVisibility,
     updateModeTagVisibility,
     updatePauseCountVisibility,
-} from "./js/app/hud.js";
-import { setRecomputeHandler } from "./js/app/scheduler.js";
+} from "../osumania_map_analyser/ManiaMapAnalyser by Leo_Black/js/app/hud.js";
+import { setRecomputeHandler } from "../osumania_map_analyser/ManiaMapAnalyser by Leo_Black/js/app/scheduler.js";
 import {
     applyAzusaSunnyReferenceHoSetting,
     applyCardBlurSetting,
@@ -32,7 +32,7 @@ import {
     applySrTextSetting,
     applyVibroDetectionSetting,
     applyWsEndpointSetting,
-} from "./js/app/settings.js";
+} from "../osumania_map_analyser/ManiaMapAnalyser by Leo_Black/js/app/settings.js";
 
 const DEFAULT_SETTINGS = Object.freeze({
     contentBar: "Auto",

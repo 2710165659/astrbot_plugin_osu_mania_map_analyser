@@ -18,12 +18,16 @@ class ManiaMapAnalyserService:
         self.plugin_root = plugin_root
         self.core_root = plugin_root / "osumania_map_analyser"
         self.overlay_root = self.core_root / "ManiaMapAnalyser by Leo_Black"
+        self.bridge_root = plugin_root / "bridge"
+        self.bridge_entry = self.bridge_root / "render_bridge.html"
         self.temp_root = Path(tempfile.gettempdir()) / "astrbot_plugin_osu_mania_map_analyser"
         if not self.overlay_root.exists():
             raise ManiaMapAnalyserError("未找到已复制的 osumania_map_analyser 核心目录")
+        if not self.bridge_entry.exists():
+            raise ManiaMapAnalyserError("未找到 bridge/render_bridge.html")
 
         self.render_settings = self._normalize_render_settings(render_config or {})
-        self.runtime = ChromiumRenderRuntime(static_root=self.overlay_root.parent)
+        self.runtime = ChromiumRenderRuntime(static_root=self.plugin_root)
 
     def generate_from_bid(
         self,

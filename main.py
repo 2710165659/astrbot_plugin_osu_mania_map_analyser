@@ -14,8 +14,8 @@ PLUGIN_ROOT = Path(__file__).resolve().parent
 if str(PLUGIN_ROOT) not in sys.path:
     sys.path.insert(0, str(PLUGIN_ROOT))
 
-from ma_service.service_mania_map_analyser import ManiaMapAnalyserService
-from ma_service.errors import ManiaMapAnalyserError
+from astrbot_service.service_mania_map_analyser import ManiaMapAnalyserService
+from astrbot_service.errors import ManiaMapAnalyserError
 
 MODE_FLAG_TO_CONTENT_BAR = {
     "-n": "None",

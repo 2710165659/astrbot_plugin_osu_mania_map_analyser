@@ -125,7 +125,7 @@ class ChromiumRenderRuntime:
             )
             self._bridge_url = (
                 f"http://127.0.0.1:{self._static_server.port}"
-                "/ManiaMapAnalyser%20by%20Leo_Black/render_bridge.html"
+                "/bridge/render_bridge.html"
             )
         except Exception as exc:  # pragma: no cover - startup failures are environment-specific
             self._startup_error = exc
