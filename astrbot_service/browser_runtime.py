@@ -27,9 +27,6 @@ class StaticFileServer:
         self._thread: threading.Thread | None = None
 
     def start(self) -> None:
-        if self._server is not None:
-            return
-
         handler = functools.partial(_QuietStaticHandler, directory=str(self.root))
         self._server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
         self.port = int(self._server.server_address[1])
@@ -49,8 +46,7 @@ class StaticFileServer:
         self._server = None
         self.port = None
 
-        if self._thread is not None and self._thread.is_alive():
-            self._thread.join(timeout=2)
+        self._thread.join(timeout=2)
         self._thread = None
 
 
@@ -64,7 +60,7 @@ class RenderRequest:
 class ChromiumRenderRuntime:
     def __init__(self, static_root: Path) -> None:
         self.static_root = static_root
-        self._jobs: Queue[tuple[str, RenderRequest | None, Future | None]] = Queue()
+        self._jobs: Queue[tuple[RenderRequest, Future[Path]] | None] = Queue()
         self._ready = threading.Event()
         self._closed = False
         self._startup_error: Exception | None = None
@@ -88,8 +84,8 @@ class ChromiumRenderRuntime:
         if self._closed:
             raise ManiaMapAnalyserError("Chromium 渲染线程已关闭")
 
-        future: Future = Future()
-        self._jobs.put(("render", request, future))
+        future: Future[Path] = Future()
+        self._jobs.put((request, future))
         return future.result()
 
     def close(self) -> None:
@@ -97,16 +93,13 @@ class ChromiumRenderRuntime:
             return
 
         self._closed = True
-        self._jobs.put(("stop", None, None))
-        if self._thread.is_alive():
-            self._thread.join(timeout=5)
+        self._jobs.put(None)
+        self._thread.join(timeout=5)
 
     def _worker_loop(self) -> None:
         try:
             self._static_server = StaticFileServer(self.static_root)
             self._static_server.start()
-            if not self._static_server.port:
-                raise ManiaMapAnalyserError("本地静态文件服务启动失败")
 
             from playwright.sync_api import sync_playwright
 
@@ -136,11 +129,10 @@ class ChromiumRenderRuntime:
         self._ready.set()
 
         while True:
-            action, request, future = self._jobs.get()
-            if action == "stop":
+            job = self._jobs.get()
+            if job is None:
                 break
-            if action != "render" or request is None or future is None:
-                continue
+            request, future = job
 
             try:
                 result = self._render_page(request)
@@ -152,9 +144,6 @@ class ChromiumRenderRuntime:
         self._shutdown_worker()
 
     def _render_page(self, request: RenderRequest) -> Path:
-        if self._context is None or self._bridge_url is None:
-            raise ManiaMapAnalyserError("Chromium 渲染上下文未就绪")
-
         request.output_path.parent.mkdir(parents=True, exist_ok=True)
         page = self._context.new_page()
         page.set_default_timeout(120000)
@@ -172,18 +161,11 @@ class ChromiumRenderRuntime:
                 "statusKind: window.__MA_RENDER_STATUS_KIND || ''"
                 "})"
             )
-            if render_state.get("error"):
+            if render_state["error"]:
                 raise ManiaMapAnalyserError(str(render_state["error"]))
 
-            selector = "#capture-surface"
-            if request.capture_target == "graph_only":
-                selector = "#body-graph-wrap"
-
-            locator = page.locator(selector)
-            if locator.count() == 0:
-                raise ManiaMapAnalyserError(f"未找到截图目标：{selector}")
-
-            locator.screenshot(
+            selector = "#body-graph-wrap" if request.capture_target == "graph_only" else "#capture-surface"
+            page.locator(selector).screenshot(
                 path=str(request.output_path),
                 animations="disabled",
             )
@@ -192,8 +174,6 @@ class ChromiumRenderRuntime:
         finally:
             page.close()
 
-        if not request.output_path.is_file() or request.output_path.stat().st_size <= 0:
-            raise ManiaMapAnalyserError("截图输出失败，PNG 文件不存在或为空")
         return request.output_path
 
     def _shutdown_worker(self) -> None:

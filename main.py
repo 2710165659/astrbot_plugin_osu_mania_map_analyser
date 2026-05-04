@@ -96,7 +96,7 @@ class ManiaMapAnalyserPlugin(Star):
     async def render_map_analysis(self, event: AstrMessageEvent):
         """统一处理 /ma 与 /mag 指令"""
 
-        raw_text = str(getattr(getattr(event, "message_obj", None), "message_str", "") or "")
+        raw_text = event.message_obj.message_str
         matched = MA_REQUEST_RE.match(raw_text)
         if not matched:
             return
@@ -104,7 +104,7 @@ class ManiaMapAnalyserPlugin(Star):
         try:
             bid, render_overrides, runtime_overrides = self._parse_request(
                 graph_flag=matched.group("graph"),
-                raw_tail=matched.group("tail") or "",
+                raw_tail=matched.group("tail"),
             )
         except ManiaMapAnalyserError as exc:
             yield event.plain_result(str(exc))
@@ -120,8 +120,8 @@ class ManiaMapAnalyserPlugin(Star):
         self,
         event: AstrMessageEvent,
         bid: str,
-        render_overrides: dict[str, str] | None = None,
-        runtime_overrides: dict[str, str | float | None] | None = None,
+        render_overrides: dict[str, str],
+        runtime_overrides: dict[str, str | float | None],
     ):
         """统一处理渲染命令，返回 plain_result 或 chain_result 对象。"""
 
@@ -139,9 +139,6 @@ class ManiaMapAnalyserPlugin(Star):
                     ),
                     timeout=self.render_timeout_seconds,
                 )
-            image_path = result["image_path"]
-            if not image_path or not Path(image_path).exists():
-                raise FileNotFoundError("生成的图表文件不存在")
         except asyncio.TimeoutError:
             return event.plain_result("谱面分析渲染超时，请稍后再试")
         except ManiaMapAnalyserError as exc:
@@ -150,6 +147,7 @@ class ManiaMapAnalyserPlugin(Star):
             logger.exception("osu mania map analyser plugin failed while rendering chart")
             return event.plain_result("谱面分析渲染失败：" + str(exc))
 
+        image_path = result["image_path"]
         chain = [
             Comp.Reply(id=event.message_obj.message_id),
             Comp.Image.fromFileSystem(image_path),
@@ -162,15 +160,15 @@ class ManiaMapAnalyserPlugin(Star):
         raw_tail: str,
     ) -> tuple[
         str | None,
-        dict[str, str] | None,
-        dict[str, str | float | None] | None,
+        dict[str, str],
+        dict[str, str | float | None],
     ]:
-        normalized = re.sub(r"\s+", "", str(raw_tail or "")).lower()
+        normalized = re.sub(r"\s+", "", raw_tail).lower()
         if not normalized:
-            return None, None, None
+            return None, {}, {}
 
         if normalized in {"help", "-h", "--help"}:
-            return None, None, None
+            return None, {}, {}
 
         content_bar = "Graph" if graph_flag else "Auto"
         remaining = normalized
@@ -198,17 +196,16 @@ class ManiaMapAnalyserPlugin(Star):
             raise ManiaMapAnalyserError("bid 格式无效，请输入谱面的数字 ID")
 
         runtime_overrides = self._build_runtime_overrides(mod_text)
-        bid = bid_text
-        return bid, {"contentBar": content_bar}, runtime_overrides
+        return bid_text, {"contentBar": content_bar}, runtime_overrides
 
     def _build_runtime_overrides(
         self,
         mod_text: str,
-    ) -> dict[str, str | float | None] | None:
+    ) -> dict[str, str | float | None]:
         if not mod_text:
-            return None
+            return {}
 
-        normalized = str(mod_text or "").strip().lower()
+        normalized = mod_text.strip().lower()
         mod = ""
         rate_text = ""
         for candidate in ("dt", "ht", "in", "ho"):
