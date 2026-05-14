@@ -100,22 +100,7 @@ class ChromiumRenderRuntime:
         try:
             self._static_server = StaticFileServer(self.static_root)
             self._static_server.start()
-
-            from playwright.sync_api import sync_playwright
-
-            self._playwright = sync_playwright().start()
-            self._browser = self._playwright.chromium.launch(
-                headless=True,
-                args=[
-                    "--disable-dev-shm-usage",
-                    "--font-render-hinting=medium",
-                ],
-            )
-            self._context = self._browser.new_context(
-                viewport={"width": 900, "height": 1400},
-                device_scale_factor=2,
-                color_scheme="dark",
-            )
+            self._launch_browser()
             self._bridge_url = (
                 f"http://127.0.0.1:{self._static_server.port}"
                 "/bridge/render_bridge.html"
@@ -138,6 +123,12 @@ class ChromiumRenderRuntime:
                 result = self._render_page(request)
             except Exception as exc:
                 future.set_exception(exc)
+                if self._is_browser_crash(exc):
+                    self._term_browser()
+                    try:
+                        self._launch_browser()
+                    except Exception:
+                        pass
             else:
                 future.set_result(result)
 
@@ -177,6 +168,30 @@ class ChromiumRenderRuntime:
         return request.output_path
 
     def _shutdown_worker(self) -> None:
+        self._term_browser()
+
+        if self._static_server is not None:
+            self._static_server.stop()
+            self._static_server = None
+
+    def _launch_browser(self) -> None:
+        from playwright.sync_api import sync_playwright
+
+        self._playwright = sync_playwright().start()
+        self._browser = self._playwright.chromium.launch(
+            headless=True,
+            args=[
+                "--disable-dev-shm-usage",
+                "--font-render-hinting=medium",
+            ],
+        )
+        self._context = self._browser.new_context(
+            viewport={"width": 900, "height": 1400},
+            device_scale_factor=2,
+            color_scheme="dark",
+        )
+
+    def _term_browser(self) -> None:
         if self._context is not None:
             try:
                 self._context.close()
@@ -198,9 +213,14 @@ class ChromiumRenderRuntime:
                 pass
             self._playwright = None
 
-        if self._static_server is not None:
-            self._static_server.stop()
-            self._static_server = None
+    @staticmethod
+    def _is_browser_crash(exc: Exception) -> bool:
+        message = str(exc).lower()
+        return any(indicator in message for indicator in [
+            "target crashed",
+            "browser has been closed",
+            "target page, context or browser has been closed",
+        ])
 
     def _normalize_startup_error(self, exc: Exception) -> ManiaMapAnalyserError:
         message = str(exc)
