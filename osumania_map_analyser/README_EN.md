@@ -7,8 +7,6 @@ This repository is an in-game overlay (pp counter) for [tosu](https://tosu.app),
 
 ![Features](img/features.gif)
 
-Estimation Algorithm Benchmark: Please visit [here](https://leoblackmt.github.io/osumania_map_analyser/) to see the performance comparison of estimation algorithms based on real beatmap data.
-
 ## Key Features
 - **Real-time Analysis**: Analyzes various data of the current beatmap in real-time during gameplay/selection.
 - **Multi-mod Support**: Compatible with multiple mods in both lazer and stable, supporting custom speed changes and OD adjustments.
@@ -17,7 +15,7 @@ Estimation Algorithm Benchmark: Please visit [here](https://leoblackmt.github.io
 - **Difficulty Estimation**: Estimates difficulty based on beatmap data and provides detailed analysis results, offering multiple difficulty estimation algorithms. Compatible with LN and RC Dans for 4/6/7K.
 - **Chart Visualization**: Provides difficulty variation charts to help players better understand the difficulty distribution of a beatmap.
 - **Pattern Analysis**: Analyzes RC/LN pattern distribution in the beatmap to help players understand its structure.
-- **SV Detection (Experimental)**: Detects whether a beatmap is an SV map.
+- **SV Detection**: Detects whether a beatmap is an SV map.
 - **Highly Customizable**: Offers a wealth of customization options to meet the needs of different players.
 
 ## Usage
@@ -27,10 +25,15 @@ Estimation Algorithm Benchmark: Please visit [here](https://leoblackmt.github.io
 4. Launch tosu, go to the dashboard, and you will find the "ManiaMapAnalyser" plugin. Click the `Settings` button on the right to configure it.
 5. For instructions on using the in-game interface and OBS, please refer to the relevant tosu documentation.
 
+## Estimator Algorithm Benchmark
+- The difficulty estimation algorithms of this plugin have been benchmarked based on real beatmap data, and the results can be viewed [here](https://leoblackmt.github.io/osumania_map_analyser/). The tests cover the performance of multiple algorithms across different types of beatmaps, helping players choose the one that suits them best.
+- It is important to note that while the benchmark provides a reference for algorithm performance, actual usage may be influenced by various factors such as beatmap characteristics and mod combinations. Players are encouraged to combine the benchmark results with their gameplay experience for judgment.
+- You can download the beatmap data used for benchmarking [here](https://github.com/LeoBlackMT/osumania_map_analyser/tree/main/docs/data/files.7z). However, please read the disclaimer and use the data responsibly.
+
 ## Notes
 1. The plugin needs to run in the `static` directory of tosu. Ensure it is placed directly in that directory, not nested inside another folder.
 2. This plugin relies on the correct parsing of beatmap data. Certain special or non-standard beatmaps may lead to inaccurate analysis results.
-3. The pause detection feature may produce false positives or misses during game lag.
+3. The pause detection feature includes a threshold mechanism (default 500ms), which can be adjusted in settings. If game lag causes false positives, consider increasing the threshold.
 4. The SV detection feature is experimental and may have a high rate of false positives; use it with caution.
 5. Although the difficulty estimation algorithms have been tuned, inaccuracies may still exist; please use them only as a reference. For 4K, high difficulties are generally more accurate with an overall error of no more than half a Dan, while low difficulties may be less accurate; in specific patterns like Minijack, Stamina, and Anchor, the estimation results may have larger deviations. For 6K and 7K, the overall performance is relatively average. It is recommended that players combine the estimation results with their actual gameplay experience for judgment and not rely too heavily on the estimates.
 6. The plugin's performance may be affected by the complexity of the beatmap and the features selected; in some cases, lag or delays may occur. Please adjust the settings according to your actual situation for a better experience.
@@ -87,9 +90,12 @@ Note: It is recommended to start with the default settings and then adjust accor
         - The star icon on the left side of the status line is shown only when a newer version is available.
     - **Vibro Detection**: Whether to enable vibro detection.
         - Recommended: When enabled, the plugin will detect if a beatmap is a vibro map and display it as "Vibro" in the estimated difficulty; otherwise, you will see an extremely inflated difficulty estimate.
+    - **SV Detection**: Whether to enable SV beatmap detection.
+        - When enabled, an SV tag will be displayed in the bottom left corner when SV is detected.
+        - Note: If the display of beatmap tag capsules is not enabled, the SV tag will not be displayed.
     - **Estimator Algorithm**: Choose the algorithm used for difficulty estimation.
         - Mixed: (Recommended) A hybrid algorithm combining the four below, offering relatively higher accuracy. Automatically selects the algorithm best suited for the current beatmap.
-        - Azusa: A Daniel-based algorithm tailored for 4K RC, incorporating adjustments based on the Suuny algorithm. It performs well in RC scenarios but is not suitable for LN-dominant beatmaps.
+        - Azusa: A hybrid algorithm oriented towards 4K RC, combining the below algorithms with specific adjustments, performing well in RC scenarios but not suitable for LN-dominant beatmaps.
         - Suuny: Maps directly to Dan star ratings using Suuny Rework, compatible with LN and RC Dans for 4/6/7K.
         - [Daniel](https://thebagelofman.github.io/Daniel/): Uses the Daniel algorithm for estimation, suitable for 4K Reform Alpha and above Dan difficulties.
         - [Companella](https://github.com/Leinadix/companella): Uses the Companella algorithm, suitable for 4K Reform Delta+ and below Dan difficulties.
@@ -112,12 +118,15 @@ Note: It is recommended to start with the default settings and then adjust accor
 - **Debug Settings**:
     - **Use Amount For Category**: Whether to enable pattern classification logic based on the beatmap's cluster amount.
         - When enabled, pattern classification will be based on the number of objects in the beatmap, which **may** more accurately identify certain beatmaps.
-    - **SV Detection**: Whether to enable SV beatmap detection (experimental).
-        - When enabled, an SV tag will be displayed in the bottom left corner.
-        - This feature is experimental and may produce false positives or misses.
     - **Azusa Sunny Reference Force HO**
         - When enabled, the Azusa algorithm will be forced to treat the beatmap as a pure RC map.
         - It is enabled by default; please do not disable it casually. 
+    - **Pause Detection Threshold**: Set the minimum duration (ms) for a time freeze to be counted as a pause.
+        - A pause is only confirmed when the game time has been frozen for longer than this threshold.
+        - Default is 500ms. If game lag causes false positives, increase this value.
+
+## Azusa Algorithm Explanation
+This algorithm is a hybrid based on the beatmap itself, combining the results of Daniel and Suuny Rework, with specific adjustments for 4K RC beatmaps. For more details, please refer to [this document](azusa_algorithm.md).
 
 ## References
 - [tosu](https://tosu.app): The runtime environment and basic framework for this plugin.
@@ -126,3 +135,7 @@ Note: It is recommended to start with the default settings and then adjust accor
 - [Interlude](https://github.com/YAVSRG/YAVSRG): Interlude's RC pattern analysis algorithm is used, with new LN detection added.
 - [Daniel](https://thebagelofman.github.io/Daniel/): Daniel's algorithm is used for difficulty estimation.
 - [Companella](https://github.com/Leinadix/companella): Companella's algorithm is used for difficulty estimation.
+
+## Special Thanks
+- [inuiyumegan](https://github.com/inuiyumegan): Provided a large amount of beatmap data for algorithm debugging and benchmarking.
+- [greycsont](https://github.com/greycsont): Contributed several features.

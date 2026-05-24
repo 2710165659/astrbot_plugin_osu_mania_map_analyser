@@ -38,7 +38,7 @@ MA_REQUEST_RE = re.compile(
 HELP_TEXT = "\n".join(
     [
         "osu!mania 谱面分析",
-        "基于 osumania_map_analyser 实现本项目，可以分析键型，预估对应rf/ln段位。",
+        "基于 osumania_map_analyser 实现本项目，可以分析键型/SV，并预估对应rf/ln段位。",
         "",
         "用法",
         "/ma <bid>      默认等同于 /ma -a <bid>",
@@ -58,7 +58,7 @@ HELP_TEXT = "\n".join(
     "astrbot_plugin_osu_mania_map_analyser",
     "xuan_yuan",
     "Render osumania_map_analyser charts from beatmap id via Playwright.",
-    "0.1.0",
+    "0.1.3",
 )
 class ManiaMapAnalyserPlugin(Star):
     """AstrBot 插件入口"""
@@ -80,7 +80,7 @@ class ManiaMapAnalyserPlugin(Star):
                 "show_mode_tag_capsule": config.get("show_mode_tag_capsule", True),
                 "vibro_detection": config.get("vibro_detection", True),
                 "debug_use_amount": config.get("debug_use_amount", False),
-                "debug_use_sv_detection": config.get("debug_use_sv_detection", False),
+                "debug_use_sv_detection": config.get("debug_use_sv_detection", True),
                 "azusa_sunny_reference_ho": config.get("azusa_sunny_reference_ho", True),
                 "card_opacity": config.get("card_opacity", "95%"),
                 "card_blur": config.get("card_blur", "Soft"),

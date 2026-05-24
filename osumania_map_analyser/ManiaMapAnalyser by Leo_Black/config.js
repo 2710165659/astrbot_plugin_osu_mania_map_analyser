@@ -70,6 +70,7 @@ export const APP_CONFIG = {
         socketRecalcLazyDelayMs: 200,
         settingsCommandTimeoutMs: 1500,
         pauseDetectEpsilonMs: 0,
+        pauseDetectionThresholdMs: 500,
     },
 
     defaults: {
@@ -81,11 +82,12 @@ export const APP_CONFIG = {
         etternaVersion: "0.72.3",
         companellaEtternaVersion: "0.74.0",
         pauseDetectionEnabled: true,
+        pauseDetectionThresholdMs: 500,
         enableEtternaRainbowBars: true,
         enableStatusMarquee: true,
         vibroDetection: true,
         disableVibroDetection: false,
-        svDetection: false,
+        useSvDetection: true,
         showModeTagCapsule: true,
         enableNumericDifficulty: true,
         hideCardDuringPlay: false,

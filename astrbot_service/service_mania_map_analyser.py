@@ -100,7 +100,7 @@ class ManiaMapAnalyserService:
             "showModeTagCapsule": bool(config["show_mode_tag_capsule"]),
             "vibroDetection": bool(config["vibro_detection"]),
             "debugUseAmount": bool(config["debug_use_amount"]),
-            "debugUseSvDetection": bool(config["debug_use_sv_detection"]),
+            "useSvDetection": bool(config["debug_use_sv_detection"]),
             "azusaSunnyReferenceHo": bool(config["azusa_sunny_reference_ho"]),
             "cardOpacity": str(config["card_opacity"]).strip(),
             "cardBlur": str(config["card_blur"]).strip(),

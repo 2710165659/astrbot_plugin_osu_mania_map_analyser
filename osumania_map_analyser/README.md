@@ -5,8 +5,6 @@
 
 ![Features](img/features.gif)
 
-估计算法 Benchmark: 请前往[此处](https://leoblackmt.github.io/osumania_map_analyser/)查看基于真实谱面数据的估计算法表现对比。
-
 ## 主要特性
 - **实时分析**：在游戏/选图过程中实时分析当前谱面的各项数据。
 - **多mod支持**：兼容lazer与stable的多个mod，支持自定义倍速与改变OD。
@@ -15,7 +13,7 @@
 - **难度估计**：基于谱面数据估算难度，并提供详细的分析结果。同时提供多种难度估计算法。适配4/6/7K的LN与RC段位。
 - **图表可视化**：提供难度变化图，帮助玩家更好地理解谱面难度分布。
 - **键型分析**：分析谱面中的RC/LN键型分布，帮助玩家了解谱面结构。
-- **SV检测(实验性)**：检测谱面是否为SV谱面。
+- **SV检测**：检测谱面是否为SV谱面。
 - **高度自定义**：提供丰富的自定义选项，满足不同玩家的需求。
 
 ## 使用方法
@@ -25,11 +23,16 @@
 4. 启动 tosu，进入 dashborad，即可找到 "ManiaMapAnalyser" 插件，可以点击右侧`Settings`按钮进行相关设置。
 5. 游戏内界面以及OBS的使用方法见 tosu 相关文档。
 
+## 难度估计算法基准测试
+- 该插件的难度估计算法经过了基于真实谱面数据的基准测试，测试结果可以在[此处](https://leoblackmt.github.io/osumania_map_analyser/)查看。测试涵盖了多个算法在不同类型谱面上的表现，帮助玩家选择适合自己的算法。
+- 需要注意的是，虽然基准测试提供了算法表现的参考，但实际使用中可能会受到谱面特征、mod组合等多种因素的影响，建议玩家结合自己的游玩体验进行判断。
+- 你可以在[此处](https://github.com/LeoBlackMT/osumania_map_analyser/tree/main/docs/data/files.7z)下载用于基准测试的谱面数据，但是请注意阅读免责声明，合理使用这些数据。
+
 ## 注意事项
 1. 插件需要在 tosu 的 `static` 目录下运行，注意不要嵌套文件夹，确保正确放置。
 2. 由于 tosu 不支持中文设置项标题，为求统一性，所有内容均使用英文。
 3. 本插件依赖于谱面数据的正确解析，某些特殊或非标准的谱面可能会导致分析结果不准确。
-4. 暂停检测功能可能会在游戏卡顿时出现误判或漏判的情况。
+4. 暂停检测功能增加了阈值机制（默认500ms），可在设置中调整。如果游戏卡顿导致误判，可适当提高阈值。
 5. SV检测功能处于实验阶段，可能会有较高的误判率，请谨慎使用。
 6. 难度估计算法虽然经过调整，但仍然可能存在不准确的情况，请仅将其作为参考。对于4K，一般情况下高难相对比较准确，整体误差不超过半个段位，低难相对没那么准确；在Minijack、Stamina和Anchor等键型中，估计结果可能会有较大的偏差。对于6K和7K，整体表现相对一般。建议玩家结合自己的实际游玩体验进行判断，不要过于依赖估计结果。
 7. 该插件的性能可能会受到谱面复杂度和所选功能的影响，在某些情况下可能会出现卡顿或延迟的情况，请根据实际情况调整设置以获得更好的体验。
@@ -86,9 +89,12 @@
         - 当发现新版本时，状态栏左侧星形图标会显示。
     - **Vibro Detection**: 是否启用Vibro检测功能。
         - 推荐启用：启用后将检测谱面是否为Vibro谱面，并在估计难度中显示为Vibro。否则您将看到被极度拉高的难度估计。
+    - **SV Detection**: 是否启用SV谱面检测功能。
+        - 启用后当检测到变速时，将在左下角显示SV标签。
+        - 注意：如果未开启显示谱面标签胶囊，SV标签将不会显示。
     - **Estimator Algorithm**: 选择用于难度估计的算法。
         - Mixed: (推荐)综合下方四个算法的混合算法，准确度相对较高。自动选择适配当前谱面的算法。
-        - Azusa: 面向4K RC的Daniel改进算法，综合了Suuny算法进行了针对调整，在RC场景下表现较好，但不适用于LN主体的谱面。
+        - Azusa: 面向4K RC的融合算法，综合了下方算法并进行了针对调整，在RC场景下表现较好，但不适用于LN主体的谱面。
         - Suuny: 使用Suuny Rework直接映射段位星数，适配4/6/7K的LN与RC段位。
         - [Daniel](https://thebagelofman.github.io/Daniel/): 使用Daniel算法进行估计，适配4K Reform Alpha及以上段位难度。
         - [Companella](https://github.com/Leinadix/companella): 使用Companella算法进行估计，适用于4K Reform Delta+及以下段位难度。
@@ -111,12 +117,15 @@
 - **调试内容**:
     - **Use Amount For Category**：是否启用基于谱面Cluster Amount的键型分类逻辑。
         - 启用后将根据谱面物件数量进行键型分类，**可能**会更准确地识别某些谱面。
-    - **SV Detection**: 是否启用SV谱面检测功能（实验性）。
-        - 启用后将在左下角显示SV标签。
-        - 该功能处于实验阶段，会有误判或漏判的情况。
     - **Azusa Sunny Reference Force HO**
         - 启用后将强制Azusa算法将谱面视为纯米。
         - 默认启用，请不要随意关闭。
+    - **Pause Detection Threshold**: 设置暂停检测的时间阈值（毫秒）。
+        - 只有当游戏时间冻结超过该时长后，才会被判定为一次暂停。
+        - 默认值为500ms。如果游戏卡顿导致误判，可适当提高该值。
+
+## Azusa 算法说明
+该算法在谱面本身的基础上，融合了Daniel和Suuny Rework的结果，并针对4K RC谱面进行了特定的调整。如有需要，请前往[此处](azusa_algorithm.md)(英文)查看详细说明。
 
 ## 参考内容
 - [tosu](https://tosu.app): 本插件的运行环境和基础框架。
@@ -125,3 +134,7 @@
 - [Interlude](https://github.com/YAVSRG/YAVSRG): 使用了Interlude的RC键型分析算法并在基础上新增LN检测算法。
 - [Daniel](https://thebagelofman.github.io/Daniel/): 使用了Daniel的算法进行难度估计。
 - [Companella](https://github.com/Leinadix/companella): 使用了Companella的算法进行难度估计。
+
+## 特别感谢
+- [inuiyumegan](https://github.com/inuiyumegan): 提供了大量谱面数据用于算法调试和Benchmark。
+- [greycsont](https://github.com/greycsont): 提供了部分功能。

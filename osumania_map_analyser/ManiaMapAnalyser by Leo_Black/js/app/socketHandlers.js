@@ -3,6 +3,7 @@ import {
     MOD_BIT_FLAG_ENTRIES,
     NOTE_END_MARGIN_MS,
     PAUSE_DETECT_EPSILON_MS,
+    PAUSE_DETECTION_THRESHOLD_MS,
     SONG_TIME_JUMP_THRESHOLD_MS,
     SORTED_KNOWN_MOD_CODES,
     socket,
@@ -96,7 +97,14 @@ function updateSongTimeState(data) {
             timelineStartMs: state.songStartMs,
             timelineEndMs: state.songEndMs,
             epsilonMs: PAUSE_DETECT_EPSILON_MS,
+            freezeStartRealMs: state.pauseFreezeStartRealMs,
+            freezeSongTimeMs: state.pauseFreezeSongTimeMs,
+            pauseThresholdMs: state.pauseDetectionThresholdMs,
+            nowRealMs: now,
         });
+
+        state.pauseFreezeStartRealMs = pauseTransition.freezeStartRealMs;
+        state.pauseFreezeSongTimeMs = pauseTransition.freezeSongTimeMs;
 
         if (pauseTransition.shouldClearMarkers) {
             clearAllPauseMarkers();

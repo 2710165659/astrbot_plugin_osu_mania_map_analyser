@@ -17,7 +17,6 @@ import {
     applyCompanellaEtternaVersionSetting,
     applyContentBarSetting,
     applyDebugUseAmountSetting,
-    applyDebugUseSvDetectionSetting,
     applyDiffTextSetting,
     applyEnableEtternaRainbowBarsSetting,
     applyEnableNumericDifficultySetting,
@@ -30,6 +29,7 @@ import {
     applyReverseCardExtendDirectionSetting,
     applyShowModeTagCapsuleSetting,
     applySrTextSetting,
+    applyUseSvDetectionSetting,
     applyVibroDetectionSetting,
     applyWsEndpointSetting,
 } from "../osumania_map_analyser/ManiaMapAnalyser by Leo_Black/js/app/settings.js";
@@ -47,7 +47,7 @@ const DEFAULT_SETTINGS = Object.freeze({
     showModeTagCapsule: true,
     vibroDetection: true,
     debugUseAmount: false,
-    debugUseSvDetection: false,
+    useSvDetection: true,
     azusaSunnyReferenceHo: true,
     cardOpacity: "95%",
     cardBlur: "Soft",
@@ -73,12 +73,22 @@ function ensurePayload() {
         throw new Error("Payload does not contain beatmap text.");
     }
 
+    const rawSettings = payload.settings && typeof payload.settings === "object" ? payload.settings : {};
+    const settings = {
+        ...DEFAULT_SETTINGS,
+        ...rawSettings,
+    };
+
+    if (
+        !Object.prototype.hasOwnProperty.call(rawSettings, "useSvDetection")
+        && Object.prototype.hasOwnProperty.call(rawSettings, "debugUseSvDetection")
+    ) {
+        settings.useSvDetection = Boolean(rawSettings.debugUseSvDetection);
+    }
+
     return {
         osuText,
-        settings: {
-            ...DEFAULT_SETTINGS,
-            ...(payload.settings && typeof payload.settings === "object" ? payload.settings : {}),
-        },
+        settings,
         runtime: {
             ...DEFAULT_RUNTIME,
             ...(payload.runtime && typeof payload.runtime === "object" ? payload.runtime : {}),
@@ -130,7 +140,7 @@ function applyRenderSettings(settings) {
     applyShowModeTagCapsuleSetting(settings.showModeTagCapsule);
     applyVibroDetectionSetting(settings.vibroDetection);
     applyDebugUseAmountSetting(settings.debugUseAmount);
-    applyDebugUseSvDetectionSetting(settings.debugUseSvDetection);
+    applyUseSvDetectionSetting(settings.useSvDetection);
     applyAzusaSunnyReferenceHoSetting(settings.azusaSunnyReferenceHo);
     applyCardOpacitySetting(settings.cardOpacity);
     applyCardBlurSetting(settings.cardBlur);

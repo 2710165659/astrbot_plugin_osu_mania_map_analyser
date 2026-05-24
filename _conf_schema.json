@@ -86,8 +86,8 @@
   "debug_use_sv_detection": {
     "description": "SV Detection",
     "type": "bool",
-    "hint": "对应原项目实验性 SV 检测开关。",
-    "default": false
+    "hint": "对应上游 SV 检测开关，默认开启，用于显示 SV 标签与相关分类逻辑。",
+    "default": true
   },
   "azusa_sunny_reference_ho": {
     "description": "Azusa Sunny Reference Force HO",

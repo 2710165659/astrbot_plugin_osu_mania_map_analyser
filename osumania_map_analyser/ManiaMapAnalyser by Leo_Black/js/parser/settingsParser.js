@@ -438,9 +438,20 @@ export function createSettingsParsers(appConfig) {
         return normalizeBooleanSetting(value, appConfig.defaults.reverseCardExtendDirection);
     }
 
+    function parsePauseDetectionThresholdValue(settingsPayload) {
+        const value = extractSettingValue(settingsPayload, "pauseDetectionThreshold");
+        if (value !== undefined && value !== null) {
+            const num = Number(value);
+            if (Number.isFinite(num) && num > 0) {
+                return Math.round(num);
+            }
+        }
+        return appConfig.defaults.pauseDetectionThresholdMs;
+    }
+
     function parseSvDetectionValue(settingsPayload) {
-        const value = extractSettingValue(settingsPayload, "debugUseSvDetection");
-        return normalizeBooleanSetting(value, appConfig.defaults.svDetection);
+        const value = extractSettingValue(settingsPayload, "useSvDetection");
+        return normalizeBooleanSetting(value, appConfig.defaults.useSvDetection);
     }
 
     function parseWsEndpointValue(settingsPayload) {
@@ -472,6 +483,7 @@ export function createSettingsParsers(appConfig) {
         parseEtternaVersionValue,
         parseCompanellaEtternaVersionValue,
         parseEnablePauseDetectionValue,
+        parsePauseDetectionThresholdValue,
         parseDisableVibroDetectionValue,
         parseVibroDetectionValue,
         parseEnableEtternaRainbowBarsValue,

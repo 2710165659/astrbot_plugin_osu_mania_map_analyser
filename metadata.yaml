@@ -2,7 +2,7 @@ name: astrbot_plugin_osu_mania_map_analyser
 display_name: osu!mania 谱面分析
 author: xuan_yuan
 desc: 使用 Playwright 调用 osumania_map_analyser，并通过 /ma 输出谱面分析图表。
-version: 0.1.2
+version: 0.1.3
 repo: https://github.com/2710165659/astrbot_plugin_osu_mania_map_analyser
 astrbot_version: ">=4.16,<5"
 support_platforms:

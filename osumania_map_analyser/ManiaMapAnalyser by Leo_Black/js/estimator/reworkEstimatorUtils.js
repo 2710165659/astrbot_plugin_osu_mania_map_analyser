@@ -1,24 +1,23 @@
-import { SR_INTERVALS } from "./intervals.js";
+import { DAN_INDEX } from "./intervals/index.js";
 
-const DAN_MEANS = {
-    Alpha: 6.562,
-    Beta: 6.957,
-    Gamma: 7.459,
-    Delta: 7.939,
-    Epsilon: 9.095,
-    Zeta: 9.473,
-    Eta: 10.162,
-    Theta: 10.782,
-};
+const DAN_MEANS = [
+    [6.562, "Alpha"],
+    [6.957, "Beta"],
+    [7.459, "Gamma"],
+    [7.939, "Delta"],
+    [9.095, "Epsilon"],
+    [9.473, "Emik Zeta"],
+    [10.162, "Thaumiel Eta"],
+    [10.782, "CloverWisp Theta"],
+];
 
-const DAN_ORDER = Object.keys(DAN_MEANS);
 const DAN_ORDER_START = 11;
 
 function precomputeDanBoundaries() {
-    const means = DAN_ORDER.map((name) => DAN_MEANS[name]);
+    const means = DAN_MEANS.map(([mean]) => mean);
     const boundaries = [];
 
-    for (let i = 0; i < DAN_ORDER.length; i += 1) {
+    for (let i = 0; i < DAN_MEANS.length; i += 1) {
         const mean = means[i];
         const lower = i > 0
             ? (means[i - 1] + mean) / 2
@@ -44,19 +43,19 @@ export function estimateDanielDan(sr) {
 
     if (sr < DAN_BOUNDARIES[0][0]) {
         return {
-            label: `< ${DAN_ORDER[0]} Low`,
+            label: `< ${DAN_MEANS[0][1]} Low`,
             numeric: null,
         };
     }
 
     if (sr >= DAN_BOUNDARIES[DAN_BOUNDARIES.length - 1][1]) {
         return {
-            label: `> ${DAN_ORDER[DAN_ORDER.length - 1]} High`,
+            label: `> ${DAN_MEANS[DAN_MEANS.length - 1][1]} High`,
             numeric: null,
         };
     }
 
-    for (let i = 0; i < DAN_ORDER.length; i += 1) {
+    for (let i = 0; i < DAN_MEANS.length; i += 1) {
         const [lower, upper] = DAN_BOUNDARIES[i];
         if (sr >= lower && sr < upper) {
             const tRaw = (sr - lower) / (upper - lower);
@@ -65,25 +64,11 @@ export function estimateDanielDan(sr) {
 
             let label;
             if (t < 1 / 3) {
-                label = `${DAN_ORDER[i]} Low`;
+                label = `${DAN_MEANS[i][1]} Low`;
             } else if (t < 2 / 3) {
-                label = `${DAN_ORDER[i]} Mid`;
+                label = `${DAN_MEANS[i][1]} Mid`;
             } else {
-                label = `${DAN_ORDER[i]} High`;
-            }
-            
-            switch (i){
-                case 5:
-                    label = `Emik ${label}`;
-                    break;
-                case 6:
-                    label = `Thaumiel ${label}`;
-                    break;
-                case 7:
-                    label = `CloverWisp ${label}`;
-                    break;
-                default:
-                    break;
+                label = `${DAN_MEANS[i][1]} High`;
             }
 
             return {
@@ -99,104 +84,26 @@ export function estimateDanielDan(sr) {
     };
 }
 
+function intervalLookup(sr, table, fallbackLabel) {
+    for (const [lower, upper, name] of table) {
+        if (lower <= sr && sr <= upper) return name;
+    }
+    if (sr < table[0][0]) return `< ${table[0][2]}`;
+    if (sr > table[table.length - 1][1]) return `> ${table[table.length - 1][2]}`;
+    return fallbackLabel;
+}
+
 export function estDiff(sr, lnRatio, columnCount) {
-    if (columnCount === 4) {
-        let rcDiff = null;
-        for (const [lower, upper, name] of SR_INTERVALS.RC_intervals_4K) {
-            if (lower <= sr && sr <= upper) {
-                rcDiff = name;
-                break;
-            }
-        }
-        if (rcDiff == null) {
-            if (sr < 1.502) rcDiff = "< Intro 1 low";
-            else if (sr > 11.129) rcDiff = "> Theta high";
-            else rcDiff = "Unknown RC difficulty";
-        }
+    const keys = DAN_INDEX[columnCount];
+    if (!keys) return "Unknown difficulty";
 
-        if (lnRatio < 0.15) return rcDiff;
+    const rcTable = keys.RC[Object.keys(keys.RC)[0]] ?? keys.RC.default;
+    const rcDiff = intervalLookup(sr, rcTable, "Unknown RC difficulty");
+    if (lnRatio < 0.15) return rcDiff;
 
-        let lnDiff = null;
-        for (const [lower, upper, name] of SR_INTERVALS.LN_intervals_4K) {
-            if (lower <= sr && sr <= upper) {
-                lnDiff = name;
-                break;
-            }
-        }
-        if (lnDiff == null) {
-            if (sr < 4.832) lnDiff = "< LN 5 mid";
-            else if (sr > 9.589) lnDiff = "> LN 17 high";
-            else lnDiff = "Unknown LN difficulty";
-        }
-
-        return `${rcDiff} || ${lnDiff}`;
-    }
-
-    if (columnCount === 6) {
-        let rcDiff = null;
-        for (const [lower, upper, name] of SR_INTERVALS.RC_intervals_6K) {
-            if (lower <= sr && sr <= upper) {
-                rcDiff = name;
-                break;
-            }
-        }
-        if (rcDiff == null) {
-            if (sr < 3.430) rcDiff = "< Regular 0 low";
-            else if (sr > 7.965) rcDiff = "> Regular 9 high";
-            else rcDiff = "Unknown RC difficulty";
-        }
-
-        if (lnRatio < 0.15) return rcDiff;
-
-        let lnDiff = null;
-        for (const [lower, upper, name] of SR_INTERVALS.LN_intervals_6K) {
-            if (lower <= sr && sr <= upper) {
-                lnDiff = name;
-                break;
-            }
-        }
-        if (lnDiff == null) {
-            if (sr < 3.530) lnDiff = "< LN 0 low";
-            else if (sr > 9.700) lnDiff = "> LN Finish high";
-            else lnDiff = "Unknown LN difficulty";
-        }
-
-        return `${rcDiff} || ${lnDiff}`;
-    }
-
-    if (columnCount === 7) {
-        let rcDiff = null;
-        for (const [lower, upper, name] of SR_INTERVALS.RC_intervals_7K) {
-            if (lower <= sr && sr <= upper) {
-                rcDiff = name;
-                break;
-            }
-        }
-        if (rcDiff == null) {
-            if (sr < 3.5085) rcDiff = "< Regular 0 low";
-            else if (sr > 10.544) rcDiff = "> Regular Stellium high";
-            else rcDiff = "Unknown RC difficulty";
-        }
-
-        if (lnRatio < 0.15) return rcDiff;
-
-        let lnDiff = null;
-        for (const [lower, upper, name] of SR_INTERVALS.LN_intervals_7K) {
-            if (lower <= sr && sr <= upper) {
-                lnDiff = name;
-                break;
-            }
-        }
-        if (lnDiff == null) {
-            if (sr < 4.836) lnDiff = "< LN 3 low";
-            else if (sr > 10.666) lnDiff = "> LN Stellium high";
-            else lnDiff = "Unknown LN difficulty";
-        }
-
-        return `${rcDiff} || ${lnDiff}`;
-    }
-
-    return "Unknown difficulty";
+    const lnTable = keys.LN[Object.keys(keys.LN)[0]] ?? keys.LN.default;
+    const lnDiff = intervalLookup(sr, lnTable, "Unknown LN difficulty");
+    return `${rcDiff} || ${lnDiff}`;
 }
 
 export function normalizeReworkResult(result) {
