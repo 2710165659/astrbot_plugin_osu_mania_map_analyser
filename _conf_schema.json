@@ -104,8 +104,8 @@
   "card_blur": {
     "description": "卡片模糊强度",
     "type": "string",
-    "hint": "可选值：Off、Soft、Strong。",
-    "default": "Soft"
+    "hint": "可选值：Off、4px、8px、12px、16px、20px。",
+    "default": "4px"
   },
   "card_radius": {
     "description": "卡片圆角",

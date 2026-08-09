@@ -24,7 +24,7 @@ import {
     applyEnableUpdateCheckSetting,
     applyEstimatorAlgorithmSetting,
     applyEtternaVersionSetting,
-    applyHideCardDuringPlaySetting,
+    applyCardVisibilitySetting,
     applyPauseDetectionSetting,
     applyReverseCardExtendDirectionSetting,
     applyShowModeTagCapsuleSetting,
@@ -50,7 +50,7 @@ const DEFAULT_SETTINGS = Object.freeze({
     useSvDetection: true,
     azusaSunnyReferenceHo: true,
     cardOpacity: "95%",
-    cardBlur: "Soft",
+    cardBlur: "4px",
     cardRadius: "Medium",
     wsEndpoint: "127.0.0.1:24050",
 });
@@ -146,7 +146,7 @@ function applyRenderSettings(settings) {
     applyCardBgBlurSetting(settings.cardBlur);
     applyCardRadiusSetting(settings.cardRadius);
     applyPauseDetectionSetting(false);
-    applyHideCardDuringPlaySetting(false);
+    applyCardVisibilitySetting("Always");
     applyReverseCardExtendDirectionSetting(false);
     applyEnableUpdateCheckSetting(false);
 }

@@ -374,6 +374,11 @@ export function createSettingsParsers(appConfig) {
         return normalizeBooleanSetting(value, appConfig.defaults.pauseDetectionEnabled);
     }
 
+    function parseEnableResultCacheValue(settingsPayload) {
+        const value = extractSettingValue(settingsPayload, "enableResultCache");
+        return normalizeBooleanSetting(value, appConfig.defaults.enableResultCache);
+    }
+
     function parseDisableVibroDetectionValue(settingsPayload) {
         return !parseVibroDetectionValue(settingsPayload);
     }
@@ -412,9 +417,10 @@ export function createSettingsParsers(appConfig) {
         return normalizeBooleanSetting(value, appConfig.defaults.enableNumericDifficulty);
     }
 
-    function parseHideCardDuringPlayValue(settingsPayload) {
-        const value = extractSettingValue(settingsPayload, "hideCardDuringPlay");
-        return normalizeBooleanSetting(value, appConfig.defaults.hideCardDuringPlay);
+    function parseCardVisibilityValue(settingsPayload) {
+        const value = extractSettingValue(settingsPayload, "cardVisibility");
+        const valid = ["DuringPlay", "OutsidePlay", "Always"];
+        return valid.includes(value) ? value : appConfig.defaults.cardVisibility;
     }
 
     function parseEnableOsuThemeValue(settingsPayload) {
@@ -514,9 +520,19 @@ export function createSettingsParsers(appConfig) {
         return appConfig.defaults.pauseDetectionThresholdMs;
     }
 
+    function parseDisplay6kLevelValue(settingsPayload) {
+        const value = extractSettingValue(settingsPayload, "display6kLevel");
+        return normalizeBooleanSetting(value, appConfig.defaults.display6kLevel);
+    }
+
     function parseSvDetectionValue(settingsPayload) {
         const value = extractSettingValue(settingsPayload, "useSvDetection");
         return normalizeBooleanSetting(value, appConfig.defaults.useSvDetection);
+    }
+
+    function parseExtendedEstimationRangeValue(settingsPayload) {
+        const value = extractSettingValue(settingsPayload, "extendedEstimationRange");
+        return normalizeBooleanSetting(value, appConfig.defaults.extendedEstimationRange);
     }
 
     function parseWsEndpointValue(settingsPayload) {
@@ -535,6 +551,26 @@ export function createSettingsParsers(appConfig) {
         return normalizeWsEndpointValue(fallbackHost, "localhost:24050");
     }
 
+    function parseForceSunnyWindowValue(settingsPayload) {
+        const value = extractSettingValue(settingsPayload, "forceSunnyWindow");
+        return normalizeBooleanSetting(value, appConfig.defaults.forceSunnyWindow);
+    }
+
+    function parseEnableLNDifficultyValue(settingsPayload) {
+        const value = extractSettingValue(settingsPayload, "enableLNDifficulty");
+        return normalizeBooleanSetting(value, appConfig.defaults.enableLNDifficulty);
+    }
+
+    function parseEnableAnalyzeLNValue(settingsPayload) {
+        const value = extractSettingValue(settingsPayload, "enableAnalyzeLN");
+        return normalizeBooleanSetting(value, appConfig.defaults.enableAnalyzeLN);
+    }
+
+    function parseEnableAlwaysShowLNDifficultyValue(settingsPayload) {
+        const value = extractSettingValue(settingsPayload, "enableAlwaysShowLNDifficulty");
+        return normalizeBooleanSetting(value, appConfig.defaults.enableAlwaysShowLNDifficulty);
+    }
+
     return {
         parseEnablePatternValue,
         parseContentBarValue,
@@ -548,6 +584,7 @@ export function createSettingsParsers(appConfig) {
         parseEtternaVersionValue,
         parseCompanellaEtternaVersionValue,
         parseEnablePauseDetectionValue,
+        parseEnableResultCacheValue,
         parsePauseDetectionThresholdValue,
         parseDisableVibroDetectionValue,
         parseVibroDetectionValue,
@@ -555,7 +592,7 @@ export function createSettingsParsers(appConfig) {
         parseEnableStatusMarqueeValue,
         parseShowModeTagCapsuleValue,
         parseEnableNumericDifficultyValue,
-        parseHideCardDuringPlayValue,
+        parseCardVisibilityValue,
         parseEnableOsuThemeValue,
         parseEnableFloatingTrianglesValue,
         parseEnableCoverArtValue,
@@ -567,6 +604,12 @@ export function createSettingsParsers(appConfig) {
         parseReverseCardExtendDirectionValue,
         parseUseOsuFontValue,
         parseSvDetectionValue,
+        parseDisplay6kLevelValue,
+        parseExtendedEstimationRangeValue,
         parseWsEndpointValue,
+        parseForceSunnyWindowValue,
+        parseEnableLNDifficultyValue,
+        parseEnableAnalyzeLNValue,
+        parseEnableAlwaysShowLNDifficultyValue,
     };
 }

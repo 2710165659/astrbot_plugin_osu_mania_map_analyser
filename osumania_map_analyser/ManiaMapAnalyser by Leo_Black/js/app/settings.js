@@ -21,21 +21,28 @@ import {
     parseEnableCoverArtValue,
     parseCustomBackgroundColorValue,
     parseEnablePauseDetectionValue,
+    parseEnableResultCacheValue,
     parsePauseDetectionThresholdValue,
     parseEstimatorAlgorithmValue,
     parseAzusaSunnyReferenceHoValue,
     parseEtternaVersionValue,
     parseCompanellaEtternaVersionValue,
     parseEnableNumericDifficultyValue,
-    parseHideCardDuringPlayValue,
+    parseCardVisibilityValue,
     parseShowModeTagCapsuleValue,
     parseEnableUpdateCheckValue,
     parseReverseCardExtendDirectionValue,
     parseUseOsuFontValue,
     parseSrTextValue,
     parseSvDetectionValue,
+    parseDisplay6kLevelValue,
+    parseExtendedEstimationRangeValue,
     parseVibroDetectionValue,
     parseWsEndpointValue,
+    parseForceSunnyWindowValue,
+    parseEnableLNDifficultyValue,
+    parseEnableAnalyzeLNValue,
+    parseEnableAlwaysShowLNDifficultyValue,
     patternClustersEl,
     reworkStarEl,
     socket,
@@ -72,6 +79,7 @@ import { applyCoverThemeForBeatmap, resetCoverTheme } from "./coverTheme.js";
 import { initTriangleField } from "./triangles.js";
 import { scheduleRecompute } from "./scheduler.js";
 import { runUpdateCheckIfDue, runUpdateCheckNow } from "./updateChecker.js";
+import { clearResultCache } from "./resultCache.js";
 
 function isAutoDisplayEnabled() {
     return state.userSrText === "Auto" || state.userContentBar === "Auto";
@@ -329,6 +337,19 @@ export function applyUseSvDetectionSetting(value) {
     return changed;
 }
 
+export function applyDisplay6kLevelSetting(value) {
+    const next = normalizeBooleanSetting(value, APP_CONFIG.defaults.display6kLevel);
+    const changed = state.display6kLevel !== next;
+    state.display6kLevel = next;
+    return changed;
+}
+export function applyExtendedEstimationRangeSetting(value) {
+    const next = normalizeBooleanSetting(value, APP_CONFIG.defaults.extendedEstimationRange);
+    const changed = state.extendedEstimationRange !== next;
+    state.extendedEstimationRange = next;
+    return changed;
+}
+
 export function applyWsEndpointSetting(value) {
     const next = normalizeWsEndpointValue(value, APP_CONFIG.defaults.wsEndpoint || APP_CONFIG.socketHost);
     const changed = state.wsEndpoint !== next;
@@ -338,6 +359,34 @@ export function applyWsEndpointSetting(value) {
         socket.setHost(next, true);
     }
 
+    return changed;
+}
+
+export function applyForceSunnyWindowSetting(value) {
+    const next = normalizeBooleanSetting(value, APP_CONFIG.defaults.forceSunnyWindow);
+    const changed = state.forceSunnyWindow !== next;
+    state.forceSunnyWindow = next;
+    return changed;
+}
+
+export function applyEnableLNDifficultySetting(value) {
+    const next = normalizeBooleanSetting(value, APP_CONFIG.defaults.enableLNDifficulty);
+    const changed = state.enableLNDifficulty !== next;
+    state.enableLNDifficulty = next;
+    return changed;
+}
+
+export function applyEnableAnalyzeLNSetting(value) {
+    const next = normalizeBooleanSetting(value, APP_CONFIG.defaults.enableAnalyzeLN);
+    const changed = state.enableAnalyzeLN !== next;
+    state.enableAnalyzeLN = next;
+    return changed;
+}
+
+export function applyEnableAlwaysShowLNDifficultySetting(value) {
+    const next = normalizeBooleanSetting(value, APP_CONFIG.defaults.enableAlwaysShowLNDifficulty);
+    const changed = state.enableAlwaysShowLNDifficulty !== next;
+    state.enableAlwaysShowLNDifficulty = next;
     return changed;
 }
 
@@ -564,10 +613,11 @@ export function applyEnableNumericDifficultySetting(value) {
     return changed;
 }
 
-export function applyHideCardDuringPlaySetting(value) {
-    const next = normalizeBooleanSetting(value, APP_CONFIG.defaults.hideCardDuringPlay);
-    const changed = state.hideCardDuringPlay !== next;
-    state.hideCardDuringPlay = next;
+export function applyCardVisibilitySetting(value) {
+    const valid = ["DuringPlay", "OutsidePlay", "Always"];
+    const next = valid.includes(value) ? value : APP_CONFIG.defaults.cardVisibility;
+    const changed = state.cardVisibility !== next;
+    state.cardVisibility = next;
     updateCardPlayVisibility();
     return changed;
 }
@@ -610,6 +660,19 @@ export function applyEnableUpdateCheckSetting(value) {
     }
 
     applyVisualStyleSettings();
+    return changed;
+}
+
+export function applyEnableResultCacheSetting(value) {
+    const next = normalizeBooleanSetting(value, APP_CONFIG.defaults.enableResultCache);
+    const changed = state.enableResultCache !== next;
+    const wasEnabled = state.enableResultCache;
+    state.enableResultCache = next;
+
+    if (changed && wasEnabled && !next) {
+        clearResultCache();
+    }
+
     return changed;
 }
 
@@ -683,14 +746,21 @@ export function setupSettingsCommandListener() {
         const vibroChanged = applyIf("VibroDetection", applyVibroDetectionSetting, parseVibroDetectionValue(payload));
         const modeTagVisibilityChanged = applyIf("showModeTagCapsule", applyShowModeTagCapsuleSetting, parseShowModeTagCapsuleValue(payload));
         const numericDifficultyChanged = applyIf("enableNumericDifficulty", applyEnableNumericDifficultySetting, parseEnableNumericDifficultyValue(payload));
-        const hideCardDuringPlayChanged = applyIf("hideCardDuringPlay", applyHideCardDuringPlaySetting, parseHideCardDuringPlayValue(payload));
+        const cardVisibilityChanged = applyIf("cardVisibility", applyCardVisibilitySetting, parseCardVisibilityValue(payload));
         const cardOpacityChanged = applyIf("cardOpacity", applyCardOpacitySetting, parseCardOpacityValue(payload));
         const cardRadiusChanged = applyIf("cardRadius", applyCardRadiusSetting, parseCardRadiusValue(payload));
         const cardBgBlurChanged = applyIf("cardBgBlur", applyCardBgBlurSetting, parseCardBgBlurValue(payload));
         const enableUpdateCheckChanged = applyIf("enableUpdateCheck", applyEnableUpdateCheckSetting, parseEnableUpdateCheckValue(payload));
+        const resultCacheChanged = applyIf("enableResultCache", applyEnableResultCacheSetting, parseEnableResultCacheValue(payload));
         const reverseCardDirectionChanged = applyIf("reverseCardExtendDirection", applyReverseCardExtendDirectionSetting, parseReverseCardExtendDirectionValue(payload));
         const osuFontChanged = applyIf("useOsuFont", applyUseOsuFontSetting, parseUseOsuFontValue(payload));
         const svChanged = applyIf("useSvDetection", applyUseSvDetectionSetting, parseSvDetectionValue(payload));
+        const forceSunnyWindowChanged = applyIf("forceSunnyWindow", applyForceSunnyWindowSetting, parseForceSunnyWindowValue(payload));
+        const enableLNDifficultyChanged = applyIf("enableLNDifficulty", applyEnableLNDifficultySetting, parseEnableLNDifficultyValue(payload));
+        const enableAnalyzeLNChanged = applyIf("enableAnalyzeLN", applyEnableAnalyzeLNSetting, parseEnableAnalyzeLNValue(payload));
+        const enableAlwaysShowLNDifficultyChanged = applyIf("enableAlwaysShowLNDifficulty", applyEnableAlwaysShowLNDifficultySetting, parseEnableAlwaysShowLNDifficultyValue(payload));
+        const display6kLevelChanged = applyIf("display6kLevel", applyDisplay6kLevelSetting, parseDisplay6kLevelValue(payload));
+        const extendedEstimationRangeChanged = applyIf("extendedEstimationRange", applyExtendedEstimationRangeSetting, parseExtendedEstimationRangeValue(payload));
         const osuThemeChanged = applyIf("enableOsuTheme", applyEnableOsuThemeSetting, parseEnableOsuThemeValue(payload));
         const floatingTrianglesChanged = applyIf("enableFloatingTriangles", applyEnableFloatingTrianglesSetting, parseEnableFloatingTrianglesValue(payload));
         const coverArtChanged = applyIf("enableCoverArt", applyEnableCoverArtSetting, parseEnableCoverArtValue(payload));
@@ -719,18 +789,25 @@ export function setupSettingsCommandListener() {
             || vibroChanged
             || modeTagVisibilityChanged
             || numericDifficultyChanged
-            || hideCardDuringPlayChanged
+            || cardVisibilityChanged
             || cardOpacityChanged
             || cardRadiusChanged
             || cardBgBlurChanged
             || enableUpdateCheckChanged
+            || resultCacheChanged
             || reverseCardDirectionChanged
             || osuFontChanged
             || osuThemeChanged
             || floatingTrianglesChanged
             || coverArtChanged
             || customColorChanged
-            || svChanged;
+            || svChanged
+            || forceSunnyWindowChanged
+            || enableLNDifficultyChanged
+            || enableAnalyzeLNChanged
+            || enableAlwaysShowLNDifficultyChanged
+            || display6kLevelChanged
+            || extendedEstimationRangeChanged;
 
         const recomputeNeeded = contentBarChanged
             || srTextChanged
@@ -745,7 +822,32 @@ export function setupSettingsCommandListener() {
             || rainbowChanged
             || vibroChanged
             || modeTagVisibilityChanged
-            || svChanged;
+            || svChanged
+            || forceSunnyWindowChanged
+            || enableLNDifficultyChanged
+            || enableAnalyzeLNChanged
+            || enableAlwaysShowLNDifficultyChanged
+            || display6kLevelChanged
+            || extendedEstimationRangeChanged;
+
+        // Invalidate cached results when any computation-affecting setting changed.
+        // wsEndpointChanged lives in `changed` only (not recomputeNeeded), so it is listed here explicitly.
+        if (estimatorChanged
+            || azusaSunnyReferenceHoChanged
+            || etternaVersionChanged
+            || companellaEtternaVersionChanged
+            || debugChanged
+            || svChanged
+            || vibroChanged
+            || wsEndpointChanged
+            || forceSunnyWindowChanged
+            || enableLNDifficultyChanged
+            || enableAnalyzeLNChanged
+            || enableAlwaysShowLNDifficultyChanged
+            || display6kLevelChanged
+            || extendedEstimationRangeChanged) {
+            clearResultCache();
+        }
 
         if (typeof state.initialSettingsResolver === "function") {
             const resolve = state.initialSettingsResolver;
@@ -819,11 +921,12 @@ export async function loadSettings() {
         applyVibroDetectionSetting(parseVibroDetectionValue(source));
         applyShowModeTagCapsuleSetting(parseShowModeTagCapsuleValue(source));
         applyEnableNumericDifficultySetting(parseEnableNumericDifficultyValue(source));
-        applyHideCardDuringPlaySetting(parseHideCardDuringPlayValue(source));
+        applyCardVisibilitySetting(parseCardVisibilityValue(source));
         applyCardOpacitySetting(parseCardOpacityValue(source));
         applyCardRadiusSetting(parseCardRadiusValue(source));
         applyCardBgBlurSetting(parseCardBgBlurValue(source));
         applyEnableUpdateCheckSetting(parseEnableUpdateCheckValue(source));
+        applyEnableResultCacheSetting(parseEnableResultCacheValue(source));
         applyReverseCardExtendDirectionSetting(parseReverseCardExtendDirectionValue(source));
         applyUseOsuFontSetting(parseUseOsuFontValue(source));
         applyEnableOsuThemeSetting(parseEnableOsuThemeValue(source));
@@ -831,6 +934,12 @@ export async function loadSettings() {
         applyEnableCoverArtSetting(parseEnableCoverArtValue(source));
         applyCustomBackgroundColorSetting(parseCustomBackgroundColorValue(source));
         applyUseSvDetectionSetting(parseSvDetectionValue(source));
+        applyForceSunnyWindowSetting(parseForceSunnyWindowValue(source));
+        applyEnableLNDifficultySetting(parseEnableLNDifficultyValue(source));
+        applyEnableAnalyzeLNSetting(parseEnableAnalyzeLNValue(source));
+        applyEnableAlwaysShowLNDifficultySetting(parseEnableAlwaysShowLNDifficultyValue(source));
+        applyDisplay6kLevelSetting(parseDisplay6kLevelValue(source));
+        applyExtendedEstimationRangeSetting(parseExtendedEstimationRangeValue(source));
     }
 
     // Apply file settings as baseline immediately
@@ -855,11 +964,12 @@ export async function loadSettings() {
             VibroDetection: APP_CONFIG.defaults.vibroDetection,
             showModeTagCapsule: APP_CONFIG.defaults.showModeTagCapsule,
             enableNumericDifficulty: APP_CONFIG.defaults.enableNumericDifficulty,
-            hideCardDuringPlay: APP_CONFIG.defaults.hideCardDuringPlay,
+            cardVisibility: APP_CONFIG.defaults.cardVisibility,
             cardOpacity: APP_CONFIG.defaults.cardOpacity,
             cardRadius: APP_CONFIG.defaults.cardRadius,
             cardBgBlur: APP_CONFIG.defaults.cardBgBlur,
             enableUpdateCheck: APP_CONFIG.defaults.enableUpdateCheck,
+            enableResultCache: APP_CONFIG.defaults.enableResultCache,
             reverseCardExtendDirection: APP_CONFIG.defaults.reverseCardExtendDirection,
             useOsuFont: APP_CONFIG.defaults.useOsuFont,
             enableOsuTheme: APP_CONFIG.defaults.enableOsuTheme,
@@ -867,6 +977,12 @@ export async function loadSettings() {
             enableCoverArt: APP_CONFIG.defaults.enableCoverArt,
             customBackgroundColor: APP_CONFIG.defaults.customBackgroundColor,
             useSvDetection: APP_CONFIG.defaults.useSvDetection,
+            forceSunnyWindow: APP_CONFIG.defaults.forceSunnyWindow,
+            enableLNDifficulty: APP_CONFIG.defaults.enableLNDifficulty,
+            enableAnalyzeLN: APP_CONFIG.defaults.enableAnalyzeLN,
+            enableAlwaysShowLNDifficulty: APP_CONFIG.defaults.enableAlwaysShowLNDifficulty,
+            display6kLevel: APP_CONFIG.defaults.display6kLevel,
+            extendedEstimationRange: APP_CONFIG.defaults.extendedEstimationRange,
         });
     }
 

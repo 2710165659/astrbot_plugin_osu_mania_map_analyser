@@ -38,7 +38,7 @@ MA_REQUEST_RE = re.compile(
 HELP_TEXT = "\n".join(
     [
         "osu!mania 谱面分析",
-        "基于 osumania_map_analyser 实现本项目，可以分析键型/SV，并预估对应rf/ln段位。",
+        "基于 osumania_map_analyser（1.7.1） 实现本项目，可以分析键型/SV，并预估对应rf/ln段位。",
         "",
         "用法",
         "/ma <bid>      默认等同于 /ma -a <bid>",
@@ -83,7 +83,7 @@ class ManiaMapAnalyserPlugin(Star):
                 "debug_use_sv_detection": config.get("debug_use_sv_detection", True),
                 "azusa_sunny_reference_ho": config.get("azusa_sunny_reference_ho", True),
                 "card_opacity": config.get("card_opacity", "95%"),
-                "card_blur": config.get("card_blur", "Soft"),
+                "card_blur": config.get("card_blur", "4px"),
                 "card_radius": config.get("card_radius", "Medium"),
             },
         )

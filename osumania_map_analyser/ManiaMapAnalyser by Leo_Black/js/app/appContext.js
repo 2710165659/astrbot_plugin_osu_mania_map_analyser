@@ -29,6 +29,8 @@ export const reworkBlockEl = document.getElementById("rework");
 export const diffGraphWrapEl = document.getElementById("rework-diff-graph-wrap");
 export const diffGraphSvgEl = document.getElementById("rework-diff-graph");
 export const diffGraphFillEl = document.getElementById("rework-diff-graph-fill");
+export const diffGraphFillPlayEl = document.getElementById("rework-diff-graph-fill-play");
+export const diffGraphPlayClipRectEl = document.getElementById("rework-diff-graph-play-clip-rect");
 export const diffGraphLineEl = document.getElementById("rework-diff-graph-line");
 export const diffGraphCursorEl = document.getElementById("rework-diff-graph-cursor");
 export const diffGraphCursorDotEl = document.getElementById("rework-diff-graph-cursor-dot");
@@ -37,6 +39,8 @@ export const diffGraphErrorEl = document.getElementById("rework-diff-graph-error
 export const bodyGraphWrapEl = document.getElementById("body-graph-wrap");
 export const bodyGraphSvgEl = document.getElementById("body-graph");
 export const bodyGraphFillEl = document.getElementById("body-graph-fill");
+export const bodyGraphFillPlayEl = document.getElementById("body-graph-fill-play");
+export const bodyGraphPlayClipRectEl = document.getElementById("body-graph-play-clip-rect");
 export const bodyGraphLineEl = document.getElementById("body-graph-line");
 export const bodyGraphCursorEl = document.getElementById("body-graph-cursor");
 export const bodyGraphCursorDotEl = document.getElementById("body-graph-cursor-dot");
@@ -53,7 +57,7 @@ export const overlayMessageEl = document.getElementById("overlay-message");
 export const mainCardEl = document.querySelector(".main-card");
 export const dashboardEl = document.querySelector(".dashboard");
 export const titleIconEl = document.querySelector(".title-icon");
-export const modeTagEl = document.getElementById("mode-tag");
+export const modeTagSubGroupEl = document.getElementById("mode-tag-subgroup");
 export const svTagEl = document.getElementById("sv-tag");
 export const starTipEl = document.getElementById("star-tip");
 
@@ -77,6 +81,9 @@ export const state = {
     userDiffText: APP_CONFIG.defaults.diffText,
     debugUseAmount: APP_CONFIG.defaults.debugUseAmount,
     useSvDetection: APP_CONFIG.defaults.useSvDetection,
+    display6kLevel: APP_CONFIG.defaults.display6kLevel,
+    sunnySR: null,
+    extendedEstimationRange: APP_CONFIG.defaults.extendedEstimationRange,
     diffText: APP_CONFIG.defaults.diffText,
     estimatorAlgorithm: APP_CONFIG.defaults.estimatorAlgorithm,
     actualEstimatorAlgorithm: APP_CONFIG.defaults.estimatorAlgorithm,
@@ -88,11 +95,12 @@ export const state = {
     enableEtternaRainbowBars: APP_CONFIG.defaults.enableEtternaRainbowBars,
     enableStatusMarquee: APP_CONFIG.defaults.enableStatusMarquee,
     enableNumericDifficulty: APP_CONFIG.defaults.enableNumericDifficulty,
-    hideCardDuringPlay: APP_CONFIG.defaults.hideCardDuringPlay,
+    cardVisibility: APP_CONFIG.defaults.cardVisibility,
     cardOpacity: APP_CONFIG.defaults.cardOpacity,
     cardRadius: APP_CONFIG.defaults.cardRadius,
     cardBgBlur: APP_CONFIG.defaults.cardBgBlur,
     enableUpdateCheck: APP_CONFIG.defaults.enableUpdateCheck,
+    enableResultCache: APP_CONFIG.defaults.enableResultCache,
     hasAvailableUpdate: false,
     reverseCardExtendDirection: APP_CONFIG.defaults.reverseCardExtendDirection,
     useOsuFont: APP_CONFIG.defaults.useOsuFont,
@@ -101,8 +109,13 @@ export const state = {
     enableCoverArt: APP_CONFIG.defaults.enableCoverArt,
     customBackgroundColor: APP_CONFIG.defaults.customBackgroundColor,
     vibroDetection: APP_CONFIG.defaults.vibroDetection,
+    forceSunnyWindow: APP_CONFIG.defaults.forceSunnyWindow,
+    enableLNDifficulty: APP_CONFIG.defaults.enableLNDifficulty,
+    enableAnalyzeLN: APP_CONFIG.defaults.enableAnalyzeLN,
+    enableAlwaysShowLNDifficulty: APP_CONFIG.defaults.enableAlwaysShowLNDifficulty,
     numericDifficulty: null,
     numericDifficultyHint: null,
+    lnStar: 0,
     forceHideNumericDifficulty: false,
     showModeTagCapsule: APP_CONFIG.defaults.showModeTagCapsule,
     showSvTag: false,
@@ -134,7 +147,7 @@ export const state = {
     settingsReceivedFromCommand: false,
     initialSettingsResolver: null,
     analysisRequestSeq: 0,
-    wsEndpoint: APP_CONFIG.defaults.wsEndpoint || SOCKET_HOST
+    wsEndpoint: APP_CONFIG.defaults.wsEndpoint || SOCKET_HOST,
 };
 
 export const MODE_TAG_OPTIONS = APP_CONFIG.options.modeTag;
@@ -183,6 +196,7 @@ export const {
     parseEtternaVersionValue,
     parseCompanellaEtternaVersionValue,
     parseEnablePauseDetectionValue,
+    parseEnableResultCacheValue,
     parsePauseDetectionThresholdValue,
     parseDisableVibroDetectionValue,
     parseVibroDetectionValue,
@@ -190,7 +204,7 @@ export const {
     parseEnableStatusMarqueeValue,
     parseShowModeTagCapsuleValue,
     parseEnableNumericDifficultyValue,
-    parseHideCardDuringPlayValue,
+    parseCardVisibilityValue,
     parseCardOpacityValue,
     parseCardRadiusValue,
     parseCardBgBlurValue,
@@ -202,7 +216,13 @@ export const {
     parseEnableCoverArtValue,
     parseCustomBackgroundColorValue,
     parseSvDetectionValue,
+    parseDisplay6kLevelValue,
+    parseExtendedEstimationRangeValue,
     parseWsEndpointValue,
+    parseForceSunnyWindowValue,
+    parseEnableLNDifficultyValue,
+    parseEnableAnalyzeLNValue,
+    parseEnableAlwaysShowLNDifficultyValue,
 } = createSettingsParsers(APP_CONFIG);
 
 export function getActiveContentBar() {
@@ -220,6 +240,8 @@ export const GRAPH_VIEW_DEFS = [
         wrapEl: diffGraphWrapEl,
         svgEl: diffGraphSvgEl,
         fillEl: diffGraphFillEl,
+        fillPlayEl: diffGraphFillPlayEl,
+        playClipRectEl: diffGraphPlayClipRectEl,
         lineEl: diffGraphLineEl,
         cursorEl: diffGraphCursorEl,
         cursorDotEl: diffGraphCursorDotEl,
@@ -232,6 +254,8 @@ export const GRAPH_VIEW_DEFS = [
         wrapEl: bodyGraphWrapEl,
         svgEl: bodyGraphSvgEl,
         fillEl: bodyGraphFillEl,
+        fillPlayEl: bodyGraphFillPlayEl,
+        playClipRectEl: bodyGraphPlayClipRectEl,
         lineEl: bodyGraphLineEl,
         cursorEl: bodyGraphCursorEl,
         cursorDotEl: bodyGraphCursorDotEl,
