@@ -3,6 +3,13 @@
 .playwright-mcp/
 /temp
 /backup
+backend/docs/
+backend/bin/
+backend/.env
 AGENTS.md
 .omo/
+.dsh/
 ManiaMapAnalyser by Leo_Black/js/estimator/companella/ort/node_modules
+ManiaMapAnalyser by Leo_Black/js/estimator/companella/ort/ort.node.min.mjs
+/test
+

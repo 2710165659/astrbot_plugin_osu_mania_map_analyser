@@ -14,6 +14,7 @@ export function normalizeContentBarValue(value) {
     if (lowered === "graph") return "Graph";
     if (lowered === "full") return "Full";
     if (lowered === "none") return "None";
+    if (lowered === "reworkpp") return "ReworkPP";
     return null;
 }
 
@@ -28,6 +29,7 @@ export function normalizeSrTextValue(value) {
     if (lowered === "msd") return "MSD";
     if (lowered === "pattern") return "Pattern";
     if (lowered === "interludesr") return "InterludeSR";
+    if (lowered === "reworkpp") return "ReworkPP";
     return null;
 }
 
@@ -309,11 +311,6 @@ export function createSettingsParsers(appConfig) {
         return normalizeBooleanSetting(value, appConfig.defaults.autoMode);
     }
 
-    function parseUseDanielAlgorithmValue(settingsPayload) {
-        const estimator = parseEstimatorAlgorithmValue(settingsPayload);
-        return estimator === "Daniel";
-    }
-
     function parseEstimatorAlgorithmValue(settingsPayload) {
         const value = extractSettingValue(settingsPayload, "estimatorAlgorithm");
         const normalized = normalizeEstimatorAlgorithmValue(value);
@@ -377,10 +374,6 @@ export function createSettingsParsers(appConfig) {
     function parseEnableResultCacheValue(settingsPayload) {
         const value = extractSettingValue(settingsPayload, "enableResultCache");
         return normalizeBooleanSetting(value, appConfig.defaults.enableResultCache);
-    }
-
-    function parseDisableVibroDetectionValue(settingsPayload) {
-        return !parseVibroDetectionValue(settingsPayload);
     }
 
     function parseVibroDetectionValue(settingsPayload) {
@@ -571,6 +564,11 @@ export function createSettingsParsers(appConfig) {
         return normalizeBooleanSetting(value, appConfig.defaults.enableAlwaysShowLNDifficulty);
     }
 
+    function parseEnableTelemetryValue(settingsPayload) {
+        const value = extractSettingValue(settingsPayload, "enableTelemetry");
+        return normalizeBooleanSetting(value, appConfig.defaults.enableTelemetry);
+    }
+
     return {
         parseEnablePatternValue,
         parseContentBarValue,
@@ -578,7 +576,6 @@ export function createSettingsParsers(appConfig) {
         parseDebugUseAmountValue,
         parseDiffTextValue,
         parseAutoModeValue,
-        parseUseDanielAlgorithmValue,
         parseEstimatorAlgorithmValue,
         parseAzusaSunnyReferenceHoValue,
         parseEtternaVersionValue,
@@ -586,7 +583,6 @@ export function createSettingsParsers(appConfig) {
         parseEnablePauseDetectionValue,
         parseEnableResultCacheValue,
         parsePauseDetectionThresholdValue,
-        parseDisableVibroDetectionValue,
         parseVibroDetectionValue,
         parseEnableEtternaRainbowBarsValue,
         parseEnableStatusMarqueeValue,
@@ -611,5 +607,6 @@ export function createSettingsParsers(appConfig) {
         parseEnableLNDifficultyValue,
         parseEnableAnalyzeLNValue,
         parseEnableAlwaysShowLNDifficultyValue,
+        parseEnableTelemetryValue,
     };
 }

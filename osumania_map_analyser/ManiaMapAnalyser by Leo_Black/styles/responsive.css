@@ -32,9 +32,9 @@
     }
 
     .main-card.bars-none {
-        height: 238px;
-        min-height: 238px;
-        max-height: 238px;
+        height: 200px;
+        min-height: 200px;
+        max-height: 200px;
     }
 
     .main-card.bars-etterna {
@@ -47,6 +47,15 @@
         height: 500px;
         min-height: 500px;
         max-height: 500px;
+    }
+
+    .main-card.bars-pp {
+        grid-template-rows: none;
+        grid-auto-rows: auto;
+        align-content: start;
+        height: auto;
+        min-height: 0;
+        max-height: none;
     }
 
     .star-value {

@@ -10,7 +10,8 @@
 
 let worker = null;
 let nextId = 0;
-let latestId = null;
+let messageHandlerAttached = false;
+const pendingRequests = new Map();
 
 function ensureWorker() {
     if (worker) return worker;
@@ -20,8 +21,23 @@ function ensureWorker() {
             { type: "module" },
         );
         worker = w;
+        messageHandlerAttached = false;
+
+        w.addEventListener("error", () => {
+            rejectAllPending(new Error("Worker crashed"));
+            if (worker === w) {
+                try {
+                    w.terminate();
+                } catch {
+                    // Ignore terminate errors during cleanup.
+                }
+                worker = null;
+                messageHandlerAttached = false;
+            }
+        });
     } catch (_) {
         worker = null;
+        messageHandlerAttached = false;
     }
     return worker;
 }
@@ -31,46 +47,79 @@ function generateId() {
     return `req-${nextId}-${Date.now()}`;
 }
 
+function rejectAllPending(reason) {
+    for (const entry of pendingRequests.values()) {
+        clearTimeout(entry.timeoutId);
+        entry.reject(reason);
+    }
+    pendingRequests.clear();
+}
+
+function attachMessageHandler(w) {
+    if (messageHandlerAttached) return;
+    messageHandlerAttached = true;
+
+    w.addEventListener("message", (event) => {
+        const { id, result, error } = event.data || {};
+        const entry = pendingRequests.get(id);
+        if (!entry) return;
+
+        pendingRequests.delete(id);
+        clearTimeout(entry.timeoutId);
+        if (error) {
+            entry.reject(new Error(error));
+        } else {
+            entry.resolve(result);
+        }
+    });
+}
+
 /**
- * Run an estimator in the worker thread.
+ * Run the estimation pipeline in the worker thread.
  *
- * @param {string} osuText - beatmap .osu file content
- * @param {object} options - { speedRate, estimatorAlgorithm, ... }
- * @returns {Promise<object>} estimator result (same shape as sync functions)
+ * @param {object} input - { rawText, estimatorAlgorithm, options } for runAnalysisPipeline
+ * @returns {Promise<object>} pipeline result (same shape as runAnalysisPipeline)
  */
-export function runInWorker(osuText, options) {
+export function runInWorker(input) {
     const w = ensureWorker();
     if (!w) return null; // caller should fall back to sync
 
-    // Cancel all previous pending requests by advancing latestId
+    // A new request supersedes every pending one: settle their promises and
+    // drop their listeners so stale work cannot accumulate in memory.
+    rejectAllPending(new Error("Worker request superseded"));
+
     const id = generateId();
-    latestId = id;
+    attachMessageHandler(w);
 
     return new Promise((resolve, reject) => {
-        const handler = (event) => {
-            const { id: respId, result, error } = event.data || {};
-
-            // Discard responses from stale requests
-            if (respId !== latestId) return;
-
-            w.removeEventListener("message", handler);
-            if (error) {
-                reject(new Error(error));
-            } else {
-                resolve(result);
-            }
-        };
-
-        w.addEventListener("message", handler);
-        w.postMessage({ id, osuText, options });
-
-        // Safety timeout (30s) to prevent hanging
-        setTimeout(() => {
-            if (id === latestId) {
-                w.removeEventListener("message", handler);
-                reject(new Error("Worker timeout"));
-            }
+        const timeoutId = setTimeout(() => {
+            const entry = pendingRequests.get(id);
+            if (!entry) return;
+            pendingRequests.delete(id);
+            reject(new Error("Worker timeout"));
         }, 30000);
+
+        pendingRequests.set(id, { resolve, reject, timeoutId });
+
+        try {
+            w.postMessage({ id, type: "pipeline", input });
+        } catch (error) {
+            const entry = pendingRequests.get(id);
+            if (entry) {
+                pendingRequests.delete(id);
+                clearTimeout(entry.timeoutId);
+            }
+            if (worker === w) {
+                try {
+                    w.terminate();
+                } catch {
+                    // Ignore terminate errors during cleanup.
+                }
+                worker = null;
+                messageHandlerAttached = false;
+            }
+            reject(error);
+        }
     });
 }
 

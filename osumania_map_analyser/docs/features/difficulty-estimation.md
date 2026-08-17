@@ -51,13 +51,37 @@ Mixed 与 Companella 不经过 Worker：
 - 用户选择存于 `state.estimatorAlgorithm`，**实际执行**的算法记录在 `state.actualEstimatorAlgorithm`（`analysis.js:514`）；
 - 缓存命中时从快照恢复，不重新计算（见 `docs/features/` 下的结果缓存文档）。
 
+### 3.5 Classic 感知星数（Sunny 密度切换）
+
+Classic 语义只影响 **Sunny 家族的星数密度**（`sunnyAlgorithm.js:938-940`）：
+
+```js
+const effectiveWeights = (options?.classicMod === true ? CArr : CArrV2).map((c, i) => c * gaps[i]);
+```
+
+- `CArr`（Classic 密度）与 `CArrV2` 均由 `computeCAndKs` 计算（sunnyAlgorithm.js:918-919），effectiveWeights 是**唯一切换行**——Classic 开时用 C_arr，否则用 C_arrV2（对标 C# MACalculator.cs ContainsCL 分支与 genirx dart `containsCL ? cArr : cArrV2`）。
+- **classicMod 选项**：`options.classicMod === true` 时切换；`undefined/false`（缺省）时输出与改动前**逐位一致**（回归锚点，基准 runner 不传 classicMod → 预期零差异）。classicMod 沿 options 链透传：analysis.js `classicMod: state.classicMod === true`（pipeline options）→ sunnyEstimator → calculate。
+- **classic 判定**：`client === "lazer" ? modCodes.has("CL") : !modCodes.has("SV2")`（modData.js:218-220，见 mod-handling.md §2.1），经 modSignature 第 4 段进缓存键——classic 状态切换自动触发重算。
+- 只改星数密度，**不影响** v2Acc/PP 公式与 Azusa/Roxy/Daniel 等非 Sunny 主算法的自身口径（Azusa/Roxy 内部参考 Sunny 调用同参透传）。
+
+### 3.4 显示星数统一为 Sunny 原始 sr
+
+左上角星数胶囊（`#rework-star`）显示的是 `rework.star`（`analysis.js:580` `showNumericStarValue`）。**无论选择哪种算法，只要显示的是星数，就一定是 Sunny 算法原始输出的 sr**：
+
+- Azusa / Roxy / Mixed 的 `star` 字段是自身 numeric 难度的线性映射（`3.4 + 0.38 * numericDifficulty`，`azusaEstimator.js:952`、`roxyEstimator.js:1509`），**不是** Sunny sr；Mixed 的 star 还可能继承被选中的 Roxy/Azusa/Daniel 子算法（`mixedEstimator.js:304-311`）；
+- `analysis.js:527-531`：当 `actualEstimatorAlgorithm` 为 Azusa/Roxy/Mixed（即未回退 Sunny）时，用与"Sunny 算法选择"完全相同的调用 `runSunnyEstimatorFromText(rawText, estimatorOptions)` 重算 sr 并覆盖 `rework.star`（同一函数、同一 options，逐位一致）；
+- **Daniel 排除**：使用独立改进算法（自己的 `sr`），不做归一化；
+- **Companella / SunnyWindow**：star 本就是 Sunny sr（Companella 直接跑 Sunny，`analysis.js:494`；SunnyWindow 只替换 estDiff 的 LN 段，不碰 star），无需处理；
+- **vibro 检测**仍用算法自身 star 判定（`analysis.js:671` `Number(selectedRework?.star)`），不随归一化变化，保持既有行为；
+- 缓存快照存储的就是归一化后的 `rework.star`（`analysis.js:753`），命中恢复一致；缓存键带 `star-v2` 版本前缀使旧快照（存算法自身 star）失效。
+
 ## 4. Worker 回退（主线程同步执行）
 
 `js/app/worker/manager.js` 管理 Worker 生命周期：
 
 - `manager.js:41 runInWorker`：创建 Worker 失败（不支持或构造异常，`manager.js:15-27 ensureWorker`）时返回 `null`（`manager.js:43`），调用方回退到主线程同步执行；
-- `manager.js:80 isWorkerAvailable`：查询 Worker 是否可用；
-- `manager.js:49-74`：只接受最新请求的结果（`latestId` 匹配），并带 30 秒超时兜底。
+- `manager.js:129 isWorkerAvailable`：查询 Worker 是否可用；
+- `manager.js:83-124 runInWorker`：新请求先取消全部在途请求（`pendingRequests` Map），共享 `message` 监听按 id 匹配响应，并带 30 秒超时兜底。
 
 `analysis.js` 中所有 worker 估算器的调用均采用 `wp ? await wp : runXxxEstimatorFromText(...)` 模式：
 
@@ -130,3 +154,5 @@ export const DAN_INDEX = {
 3. **LN 阈值**：`estDiff` 中 LN 标签仅在 `lnRatio >= 0.15` 或 `enableAlwaysShowLNDifficulty` 时展示，否则只返回 RC 标签（`reworkEstimatorUtils.js:103`）；SunnyWindow 用 `estDiff2` 以 LN 星数为准（`reworkEstimatorUtils.js:110`）。
 4. **标签结构**：RC/LN 复合标签以 `"RC || LN"` 形式返回（`reworkEstimatorUtils.js:107`），解析时按 `||` 分割。
 5. **缓存键**：`extendedEstimationRange`、`forceSunnyWindow` 等计算相关设置不在缓存键中，依赖设置变更时清缓存（见设置/缓存文档），新增此类设置必须同步加入失效列表。
+6. **显示星数恒为 Sunny sr**：星数胶囊只显示 Sunny 原始 sr（§3.4），Azusa/Roxy/Mixed 的 star 仅是内部口径，不作为显示值。
+7. **Etterna MSD 上限突破**：MinaCalc 内置 SSR 技能值上限 40.0 已通过 wasm 二进制等长替换（`f32.const 40.0` → `f32.const 100.0`）提升至 100.0（工具见 `tools/patch-minaclac-msd-cap.mjs`，`tools/README.md`）；显示刻度 `config.js:48 etterna.maxSkillValue = 45.0`（技能条宽度与 MSD 胶囊颜色映射按 45 标定）。浏览器加载 wasm 带 `?v=` cache-bust（`js/ett/constants.js WASM_ASSET_VERSION`，bump 时机：wasm 字节变更）。实测效果：技能值低于饱和区（Overall ≲ 37）的谱面输出逐位不变；处于饱和区（~37–40）的谱面数值随上限平滑上升；触顶谱面（技能值被钳在 40.000）突破 40/42 上限。`minaclac-68.0-unofficial.wasm` 未 patch（其 40.0 常量非技能上限，patch 会改变普通谱面输出）；0.70.0 的 Stream 技能值存在旧版独立的饱和行为（不在本 patch 常量内），其 Overall 与其余技能值正常突破。

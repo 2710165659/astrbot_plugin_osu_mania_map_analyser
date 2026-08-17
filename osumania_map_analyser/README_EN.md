@@ -8,7 +8,7 @@ This repository is an entirely AI-crafted in-game overlay (ppcounter) for [tosu]
 ![Features](img/features.gif)
 
 <details>
-<summary>New Theme Screenshots</summary>
+<summary>Theme Screenshots</summary>
 <img src="img/themeLN.jpg" alt="LN" width="400">
 <img src="img/themeRC.jpg" alt="RC" width="400">
 <img src="img/full.jpg" alt="Full" width="400">
@@ -17,11 +17,13 @@ This repository is an entirely AI-crafted in-game overlay (ppcounter) for [tosu]
 ## Key Features
 - **Real-time Analysis**: Analyzes various data of the current beatmap in real-time during gameplay or beatmap selection.
 - **Multi-mod Support**: Compatible with multiple mods in both lazer and stable, supporting custom speed multipliers and OD adjustments.
-- **Customizable Etterna Version**: Allows users to select different versions of [Etterna](https://github.com/etternagame/etterna) MinaCalc for calculations.
+- **Customizable Etterna Version**: Allows users to select different versions of [Etterna](https://github.com/etternagame/etterna) MinaCalc for calculation while surpassing Etterna's official cap.
 - **Pause Detection**: Detects pauses during gameplay and marks their positions on the graph.
 - **Difficulty Estimation**: Estimates difficulty based on beatmap data and provides detailed analysis results, offering multiple estimation algorithms. Compatible with LN and RC Dans for 4/6/7K.
 - **Graph Visualization**: Provides difficulty variation graphs to help players better understand the difficulty distribution of a beatmap.
 - **Pattern Analysis**: Analyzes RC/LN pattern distribution in the beatmap to help players understand its structure.
+- **Rework PP**: Provides the Rework PP performance panel with Max PP/Live PP, Proportion, and multiplier bars, updating in real-time during play and results.
+- **Preset System**: Provides system and custom presets to apply or save the whole configuration with one click, with automatic follow mode for manual changes.
 - **SV Detection**: Detects whether a beatmap is an SV (speed variation) map.
 - **Highly Customizable**: Offers a wealth of customization options to meet the needs of different players.
 
@@ -45,13 +47,19 @@ This repository is an entirely AI-crafted in-game overlay (ppcounter) for [tosu]
 5. The plugin's performance may be affected by the complexity of the beatmap and the features selected; in some cases, lag or delays may occur. Please adjust the settings according to your actual situation for a better experience.
 6. If you encounter any issues, feel free to submit an issue.
 
+## Privacy / Anonymous Usage Statistics
+This plugin sends anonymous usage statistics by default (active users, online distribution, usage behavior). The data contains **no** username, player id, scores, beatmap identity (title/md5), or IP address — it is used only for aggregate statistics. The public dashboard is at https://mma-stats.leoblack.top/
+
+To opt out, turn off "Anonymous Usage Statistics" under Settings → Network.
+
 ## Settings
-Note: It is recommended to start with the default settings and then adjust according to personal preference.
+Note: It is recommended to start with the default settings or a suitable preset, and then adjust according to personal preference.
 See [docs/settings.md](docs/settings.md#english) for detailed settings instructions.
+For the preset system tutorial, see [docs/presets-guide.md](docs/presets-guide.md#english).
 
 ## Roxy Algorithm Explanation
-Roxy is a 4K RC meta-structural estimator. Its core consists of two layers: the first layer performs structural analysis on the beatmap across 7 aspects, producing structured numerical difficulty; the second layer blends reference predictions from Azusa/Sunny/Daniel using a GBDT (Gradient Boosted Decision Tree) meta-model to output the final difficulty.
-Please note that as a tree-based model, the GBDT meta-model can exhibit boundary discontinuities: a miniscule change in input features (e.g., a 0.01× speed rate difference) may cross a decision tree split threshold and produce a disproportionately large jump in the output difficulty. Users should be aware of this inherent characteristic of tree-based estimators.
+Roxy is a 4K RC meta-structural estimator focused on the high-difficulty band (numeric 11~17, Alpha to Emik Zeta high). Its core has two layers: the first performs structural analysis across 7 aspects to produce a structured numeric difficulty; the second blends Azusa/Daniel reference predictions via a Ridge linear meta-model, then averages the final output with the Azusa prediction at a 0.4/0.6 weight (variance reduction). The meta-model is calibrated onto the 0.5 ordinal tier scale (a pure internal transform, no chart-external information), keeping results closer to tier judgments.
+Maps below Alpha (< 11) return "< Alpha Low" (no numeric difficulty) and maps at or above Emik Zeta high (>= 17) return "> Emik Zeta high"; Mixed automatically routes low-difficulty maps to Azusa, so Roxy's low-band estimate is not the final result.
 
 ## Azusa Algorithm Explanation
 This algorithm builds on the beatmap itself, combining the results of Daniel and Sunny Rework, with specific adjustments targeted at 4K RC beatmaps. For more details, please refer to [this document](docs/azusa_algorithm.md).

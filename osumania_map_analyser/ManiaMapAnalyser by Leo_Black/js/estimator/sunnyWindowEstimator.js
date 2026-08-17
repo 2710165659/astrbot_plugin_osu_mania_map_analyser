@@ -1,7 +1,6 @@
 import { calculate as calculateSunny } from "../rework/sunnyAlgorithm.js";
 import { calculateLN } from "../rework/sunnyWindowAlgorithm.js"
 import { estDiff2, normalizeReworkResult } from "./reworkEstimatorUtils.js";
-import { state } from "../app/appContext.js";
 
 function normalizeSunnyWindowResult(result) {
     if (result?.NoLN) return {star: 0, typePercentageData: result.typePercentageData};
@@ -11,24 +10,24 @@ function normalizeSunnyWindowResult(result) {
     return ret;
 }
 
-export function runSunnyWindowEstimatorFromText(osuText, options = {}) {
+export function runSunnyWindowEstimatorFromText(osuText, options = {}, parsed = null) {
     const speedRate = options.speedRate ?? 1.0;
     const odFlag = options.odFlag ?? null;
     const cvtFlag = options.cvtFlag ?? null;
     const withGraph = options.withGraph === true;
 
-    const rawResult = calculateSunny(osuText, speedRate, odFlag, cvtFlag, { withGraph });
-    const parsed = normalizeReworkResult(rawResult);
+    const rawResult = calculateSunny(osuText, speedRate, odFlag, cvtFlag, { withGraph }, parsed);
+    const parsedResult = normalizeReworkResult(rawResult);
 
-    const rawResultLN = calculateLN(osuText, speedRate, odFlag, cvtFlag, { withGraph });
+    const rawResultLN = calculateLN(osuText, speedRate, odFlag, cvtFlag, { withGraph, enableAnalyzeLN: options.enableAnalyzeLN === true }, parsed);
     const parsedLN = normalizeSunnyWindowResult(rawResultLN);
 
-    const shouldShowLN = state.enableAlwaysShowLNDifficulty || parsed.lnRatio > 0.15 || (parsedLN.star > 1.5 && parsedLN.star > parsed.star * 0.7) || parsed.lnPartsRatio > 0.3
+    const shouldShowLN = options.enableAlwaysShowLNDifficulty === true || parsedResult.lnRatio > 0.15 || (parsedLN.star > 1.5 && parsedLN.star > parsedResult.star * 0.7) || parsedResult.lnPartsRatio > 0.3
     const LNStar = shouldShowLN && parsedLN.star ? parsedLN.star : 0;
 
     return {
-        ...parsed,
-        estDiff: estDiff2(parsed.star, LNStar, parsed.columnCount, options.extendedEstimationRange === true),
+        ...parsedResult,
+        estDiff: estDiff2(parsedResult.star, LNStar, parsedResult.columnCount, options.extendedEstimationRange === true),
         numericDifficulty: null,
         numericDifficultyHint: null,
         typePercentageData: parsedLN.typePercentageData,
