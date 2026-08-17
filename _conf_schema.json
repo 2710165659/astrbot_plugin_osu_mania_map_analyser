@@ -20,13 +20,13 @@
   "content_bar": {
     "description": "卡片主体内容",
     "type": "string",
-    "hint": "可选值：None、Auto、Pattern、Etterna、Graph。命令中可通过 /ma -n、-a、-p、-e、-g 覆盖；/ma <bid> 默认等同 /ma -a <bid>。",
+    "hint": "可选值：None、Auto、Pattern、Etterna、Graph、ReworkPP、Full。命令中可通过 /ma -n、-a、-p、-e、-g 覆盖；/ma <bid> 默认等同 /ma -a <bid>。",
     "default": "Auto"
   },
   "sr_text": {
     "description": "左上角胶囊内容",
     "type": "string",
-    "hint": "可选值：ReworkSR、MSD、Pattern、InterludeSR、Auto。",
+    "hint": "可选值：ReworkSR、MSD、Pattern、InterludeSR、ReworkPP、Auto。",
     "default": "Auto"
   },
   "diff_text": {
@@ -38,7 +38,7 @@
   "estimator_algorithm": {
     "description": "估算算法",
     "type": "string",
-    "hint": "可选值：Mixed、Azusa、Sunny、Daniel、Companella。",
+    "hint": "可选值：Mixed、Azusa、Roxy、Sunny、SunnyWindow、Daniel、Companella。",
     "default": "Mixed"
   },
   "etterna_version": {

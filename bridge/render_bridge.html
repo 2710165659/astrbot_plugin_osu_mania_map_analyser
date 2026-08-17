@@ -35,6 +35,7 @@
     <div id="capture-surface">
         <main class="dashboard" id="render-root">
             <section class="card main-card">
+                <div class="triangle-field" aria-hidden="true"></div>
                 <div class="status-row">
                     <span class="title-icon" aria-hidden="true" hidden>
                         <svg viewBox="0 0 24 24" role="img" focusable="false">
@@ -49,34 +50,63 @@
                         <div class="star-value" id="rework-star">-</div>
                         <div class="star-meta" id="rework-meta">LN%: -<br />Keys: -</div>
                     </div>
-                    <div class="star-right">
-                        <div class="top-right-capsule" id="rework-right-capsule" hidden>-</div>
-                        <div class="star-subtitle" id="rework-diff">-</div>
-                        <div class="star-graph-wrap" id="rework-diff-graph-wrap" hidden>
-                            <svg id="rework-diff-graph" class="star-graph" viewBox="0 0 260 86" preserveAspectRatio="none" aria-label="Difficulty graph" role="img">
-                                <path id="rework-diff-graph-fill" class="star-graph-fill" d=""></path>
-                                <path id="rework-diff-graph-line" class="star-graph-line" d=""></path>
-                                <g id="rework-diff-graph-pause-markers"></g>
-                                <line id="rework-diff-graph-cursor" class="star-graph-cursor" x1="0" y1="0" x2="0" y2="86" hidden></line>
-                                <circle id="rework-diff-graph-cursor-dot" class="star-graph-cursor-dot" cx="0" cy="0" r="2.8" hidden></circle>
-                            </svg>
-                            <div id="rework-diff-graph-error" class="star-graph-error" hidden>Graph unavailable</div>
+                    <div class="star-right-group">
+                        <div class="star-right">
+                            <div class="top-right-capsule" id="rework-right-capsule" hidden>-</div>
+                            <div class="star-subtitle" id="rework-diff">-</div>
+                            <div class="star-graph-wrap" id="rework-diff-graph-wrap" hidden>
+                                <svg id="rework-diff-graph" class="star-graph" viewBox="0 0 260 86" preserveAspectRatio="none" aria-label="Difficulty graph" role="img">
+                                    <defs>
+                                        <clipPath id="rework-diff-graph-play-clip" clipPathUnits="userSpaceOnUse">
+                                            <rect id="rework-diff-graph-play-clip-rect" x="0" y="0" width="0" height="86"></rect>
+                                        </clipPath>
+                                    </defs>
+                                    <path id="rework-diff-graph-fill" class="star-graph-fill" d=""></path>
+                                    <path id="rework-diff-graph-fill-play" class="star-graph-fill-play" d="" clip-path="url(#rework-diff-graph-play-clip)"></path>
+                                    <path id="rework-diff-graph-line" class="star-graph-line" d=""></path>
+                                    <g id="rework-diff-graph-pause-markers"></g>
+                                    <line id="rework-diff-graph-cursor" class="star-graph-cursor" x1="0" y1="0" x2="0" y2="86" hidden></line>
+                                    <circle id="rework-diff-graph-cursor-dot" class="star-graph-cursor-dot" cx="0" cy="0" r="2.8" hidden></circle>
+                                </svg>
+                                <div id="rework-diff-graph-error" class="star-graph-error" hidden>Graph unavailable</div>
+                            </div>
+                            <div class="star-caption" id="est-diff-caption">Estimate Difficulty</div>
                         </div>
-                        <div class="star-caption" id="est-diff-caption">Estimate Difficulty</div>
+                        <div class="star-tip" id="star-tip" hidden>
+                            <span class="star-dot" data-level="5"></span>
+                            <span class="star-dot" data-level="4"></span>
+                            <span class="star-dot" data-level="3"></span>
+                            <span class="star-dot" data-level="2"></span>
+                            <span class="star-dot" data-level="1"></span>
+                        </div>
                     </div>
                 </div>
 
+                <div class="full-separator" id="sep-pattern" hidden>Pattern</div>
                 <ol id="pattern-clusters" class="cluster-bars">
                     <li class="cluster-item empty">No data</li>
                 </ol>
 
+                <div class="full-separator" id="sep-etterna" hidden>Etterna | Overall: --</div>
                 <ol id="ett-skill-bars" class="ett-skill-bars" hidden>
                     <li class="ett-skill-item empty">No data</li>
                 </ol>
 
+                <div class="full-separator" id="sep-pp" hidden>ReworkPP</div>
+                <ol id="pp-bars" class="pp-bars" hidden>
+                    <li class="pp-item empty">No data</li>
+                </ol>
+
+                <div class="full-separator" id="sep-graph" hidden>Graph</div>
                 <div class="body-graph-wrap" id="body-graph-wrap" hidden>
                     <svg id="body-graph" class="body-graph" viewBox="0 0 260 86" preserveAspectRatio="xMidYMid meet" aria-label="Body difficulty graph" role="img">
+                        <defs>
+                            <clipPath id="body-graph-play-clip" clipPathUnits="userSpaceOnUse">
+                                <rect id="body-graph-play-clip-rect" x="0" y="0" width="0" height="86"></rect>
+                            </clipPath>
+                        </defs>
                         <path id="body-graph-fill" class="star-graph-fill" d=""></path>
+                        <path id="body-graph-fill-play" class="star-graph-fill-play" d="" clip-path="url(#body-graph-play-clip)"></path>
                         <path id="body-graph-line" class="star-graph-line" d=""></path>
                         <g id="body-graph-pause-markers"></g>
                         <line id="body-graph-cursor" class="star-graph-cursor" x1="0" y1="0" x2="0" y2="86" hidden></line>
@@ -86,7 +116,7 @@
                 </div>
 
                 <div class="mode-tag-group">
-                    <span id="mode-tag" class="mode-tag mode-mix">Mix</span>
+                    <span id="mode-tag-subgroup"><span class="mode-tag mode-mix">Mix</span></span>
                     <span id="sv-tag" class="mode-tag mode-sv sv-tag" hidden>SV</span>
                 </div>
                 <div id="pause-count" class="pause-count" hidden></div>
