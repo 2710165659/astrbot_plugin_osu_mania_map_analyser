@@ -1,4 +1,27 @@
 {
+  "image_recognition_enabled": {
+    "description": "启用引用 Yumu 图片识别",
+    "type": "bool",
+    "hint": "回复单张完整 Yumu 成绩卡发送 /ma；只识别 bid，不继承截图中的 mod。",
+    "default": true
+  },
+  "ocr_timeout_seconds": {
+    "description": "图片获取与 OCR 超时（秒）",
+    "type": "int",
+    "default": 20
+  },
+  "ocr_confidence_threshold": {
+    "description": "OCR 最低置信度",
+    "type": "float",
+    "hint": "范围 0-1，两种预处理结果必须一致且均达到阈值。",
+    "default": 0.9
+  },
+  "ocr_debug": {
+    "description": "OCR 调试日志",
+    "type": "bool",
+    "hint": "开启后在 DEBUG 日志记录识别文本、置信度与推理耗时；不保存图片。",
+    "default": false
+  },
   "max_concurrency": {
     "description": "最大并发任务数",
     "type": "int",

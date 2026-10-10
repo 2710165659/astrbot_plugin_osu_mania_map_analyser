@@ -16,6 +16,7 @@ if str(PLUGIN_ROOT) not in sys.path:
 
 from astrbot_service.service_mania_map_analyser import ManiaMapAnalyserService
 from astrbot_service.errors import ManiaMapAnalyserError
+from astrbot_service.image_bid_recognizer import ImageBidRecognizer, FAILURE_TEXT
 
 MODE_FLAG_TO_CONTENT_BAR = {
     "-n": "None",
@@ -48,6 +49,7 @@ HELP_TEXT = "\n".join(
         "/ma -e <bid>   主体显示 Etterna 7 大键型分",
         "/ma -g <bid>   主体显示难度变化图，命令简写/mag",
         "/ma help       显示本帮助文本",
+        "引用一张完整 Yumu 成绩图后发送 /ma（支持 -e、/mag、+dt 等参数）",
         "",
         "示例：/ma 5170433+dt1.1 ",
     ]
@@ -91,6 +93,12 @@ class ManiaMapAnalyserPlugin(Star):
         self.max_concurrency = max(1, min(configured_max_concurrency, 5))
         self.render_timeout_seconds = config.get("render_timeout_seconds", 120)
         self._render_semaphore = asyncio.Semaphore(self.max_concurrency)
+        self.image_recognition_enabled = config.get("image_recognition_enabled", True)
+        self.ocr_timeout_seconds = max(1, int(config.get("ocr_timeout_seconds", 20)))
+        self.image_recognizer = ImageBidRecognizer(
+            config.get("ocr_confidence_threshold", 0.9), config.get("ocr_debug", False)
+        )
+        self._ocr_task = None
 
     @filter.event_message_type(filter.EventMessageType.ALL)
     async def render_map_analysis(self, event: AstrMessageEvent):
@@ -111,10 +119,61 @@ class ManiaMapAnalyserPlugin(Star):
             return
 
         if bid is None:
-            yield event.plain_result(HELP_TEXT)
-            return
+            normalized_tail = re.sub(r"\s+", "", matched.group("tail")).lower()
+            if normalized_tail in {"help", "-h", "--help"}:
+                yield event.plain_result(HELP_TEXT)
+                return
+            try:
+                bid = await self._bid_from_reply(event)
+            except ManiaMapAnalyserError as exc:
+                yield event.plain_result(str(exc))
+                return
+            if bid is None:
+                yield event.plain_result(HELP_TEXT)
+                return
 
         yield await self._render_result(event, bid, render_overrides, runtime_overrides)
+
+    async def _bid_from_reply(self, event):
+        replies = [part for part in event.message_obj.message if isinstance(part, Comp.Reply)]
+        if not replies:
+            return None
+        if not self.image_recognition_enabled:
+            raise ManiaMapAnalyserError("图片识别未启用，请手动发送 /ma <bid>。")
+        if self._ocr_task is not None and not self._ocr_task.done():
+            raise ManiaMapAnalyserError("图片识别任务正在进行，请稍后再试")
+        self._ocr_task = asyncio.create_task(self._recognize_reply(event, replies[0]))
+        # Shield keeps the task alive after timeout, so the busy guard remains valid.
+        self._ocr_task.add_done_callback(lambda task: task.exception() if not task.cancelled() else None)
+        try:
+            return await asyncio.wait_for(asyncio.shield(self._ocr_task), self.ocr_timeout_seconds)
+        except asyncio.TimeoutError as exc:
+            raise ManiaMapAnalyserError("图片识别超时，请手动发送 /ma <bid>。") from exc
+        except ManiaMapAnalyserError:
+            raise
+        except Exception as exc:
+            logger.warning("Yumu reply extraction failed (%s)", type(exc).__name__)
+            raise ManiaMapAnalyserError(FAILURE_TEXT) from exc
+
+    async def _recognize_reply(self, event, reply):
+        chain = reply.chain or []
+        if not chain:
+            bot = getattr(event, "bot", None)
+            if bot is None or not hasattr(bot, "call_action"):
+                raise ManiaMapAnalyserError(FAILURE_TEXT)
+            data = await bot.call_action(action="get_msg", message_id=reply.id)
+            segments = data.get("message", [])
+            if not isinstance(segments, list):
+                raise ManiaMapAnalyserError(FAILURE_TEXT)
+            chain = [Comp.Image(file=part["data"].get("file"), url=part["data"].get("url", ""))
+                     for part in segments if part.get("type") == "image"]
+        images = [part for part in chain if isinstance(part, Comp.Image)]
+        if not images:
+            return None
+        if len(images) != 1:
+            raise ManiaMapAnalyserError("请只引用一张 Yumu 成绩图")
+        path = await images[0].convert_to_file_path()
+        return await asyncio.to_thread(self.image_recognizer.recognize, path)
 
     async def _render_result(
         self,
@@ -164,9 +223,6 @@ class ManiaMapAnalyserPlugin(Star):
         dict[str, str | float | None],
     ]:
         normalized = re.sub(r"\s+", "", raw_tail).lower()
-        if not normalized:
-            return None, {}, {}
-
         if normalized in {"help", "-h", "--help"}:
             return None, {}, {}
 
@@ -180,23 +236,20 @@ class ManiaMapAnalyserPlugin(Star):
                     remaining = remaining[len(mode_flag):]
                     break
 
-        if not remaining:
-            raise ManiaMapAnalyserError("缺少 bid。示例：/ma 5199917、/mag 5199917+dt")
-
         bid_text = remaining
         mod_text = ""
         if "+" in remaining:
             bid_text, mod_text = remaining.split("+", 1)
-            if not bid_text or not mod_text or "+" in mod_text:
+            if not mod_text or "+" in mod_text:
                 raise ManiaMapAnalyserError(
                     "命令格式不正确。示例：/ma 5199917、/mag5170433+dt、/ma-g5170433+ht0.75"
                 )
 
-        if not bid_text.isdigit():
+        if bid_text and not bid_text.isdigit():
             raise ManiaMapAnalyserError("bid 格式无效，请输入谱面的数字 ID")
 
         runtime_overrides = self._build_runtime_overrides(mod_text)
-        return bid_text, {"contentBar": content_bar}, runtime_overrides
+        return bid_text or None, {"contentBar": content_bar}, runtime_overrides
 
     def _build_runtime_overrides(
         self,
