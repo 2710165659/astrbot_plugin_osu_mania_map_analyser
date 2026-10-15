@@ -6,3 +6,4 @@ service/__pycache__/
 venv/
 .reasonix/
 .local
+data
