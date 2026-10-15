@@ -32,7 +32,7 @@ MOD_DEFAULT_SPEED = {
 }
 
 MA_REQUEST_RE = re.compile(
-    r"^\s*/ma(?P<graph>g)?(?P<tail>(?:\s*(?:help|[-+0-9].*))?)\s*$",
+    r"^\s*/ma(?P<graph>g)?(?P<tail>(?:\s*(?:help|[-+0-9].*)|\s+(?:dt|ht|in|ho).*)?)\s*$",
     re.IGNORECASE,
 )
 
@@ -49,7 +49,8 @@ HELP_TEXT = "\n".join(
         "/ma -e <bid>   主体显示 Etterna 7 大键型分",
         "/ma -g <bid>   主体显示难度变化图，命令简写/mag",
         "/ma help       显示本帮助文本",
-        "引用一张完整 Yumu 成绩图后发送 /ma（支持 -e、/mag、+dt 等参数）",
+        "引用一张完整 Yumu 成绩图后发送 /ma（支持 -e、/mag、dt 等参数，mod 前的 + 可省略）",
+        "引用图片示例：/ma dt、/ma +dt、/ma -e ht0.8",
         "",
         "示例：/ma 5170433+dt1.1 ",
     ]
@@ -60,7 +61,7 @@ HELP_TEXT = "\n".join(
     "astrbot_plugin_osu_mania_map_analyser",
     "xuan_yuan",
     "Render osumania_map_analyser charts from beatmap id via Playwright.",
-    "0.1.6",
+    "0.2.1",
 )
 class ManiaMapAnalyserPlugin(Star):
     """AstrBot 插件入口"""
@@ -244,6 +245,8 @@ class ManiaMapAnalyserPlugin(Star):
                 raise ManiaMapAnalyserError(
                     "命令格式不正确。示例：/ma 5199917、/mag5170433+dt、/ma-g5170433+ht0.75"
                 )
+        elif remaining.startswith(("dt", "ht", "in", "ho")):
+            bid_text, mod_text = "", remaining
 
         if bid_text and not bid_text.isdigit():
             raise ManiaMapAnalyserError("bid 格式无效，请输入谱面的数字 ID")
