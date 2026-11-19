@@ -17,6 +17,7 @@
 - 当认为可以记录经验和教训时，请编写对应的知识与教训文档，记录在开发、调优与基准验证过程中积累的经验、失败记录与方法论。该文档主要给人类和AI阅读，因此需要双语。文档请按内容命名并放在 docs/learnings 目录下。
 - 当做出重大破坏性更改时，请编写文档说明，标注修改内容和修改原因，以便后续进行代码审查和测试。该文档主要给人类和AI阅读，因此需要双语。文档请按时间戳和修改内容命名并放在 docs/breakings 目录下。
 - 新增/删除文档需要在docs/README.md中添加/删除对应的索引条目。
+- 正文段落不得手动换行（让编辑器软换行）
 
 ## 文档索引
 
@@ -26,24 +27,38 @@
 | --- | --- | --- |
 | docs/README.md | 人类 | 本文档 |
 | [settings.md](settings.md) | 人类 | 插件设置说明文档 |
+| [shell-guide.md](shell-guide.md) | 人类 | 桌面壳使用教程（安装、窗口操作、桥接线、故障排查，中英双语） |
 | [presets-guide.md](presets-guide.md) | 人类 | 预设系统新手教程（零基础双语教学，逐按钮讲解） |
 | [azusa_algorithm.md](azusa_algorithm.md) | 人类/AI | Azusa算法说明文档(英文) |
 | [roxy_algorithm.md](roxy_algorithm.md) | 人类/AI | Roxy算法说明文档(英文) |
+| [polaris_algorithm.md](polaris_algorithm.md) | 人类/AI | Polaris算法说明文档(英文，表修正估算器：7K 的 RC+LN；4K/6K 回退 Sunny) |
 | [features/README.md](features/README.md) | AI | 功能技术文档类别索引（难度估计、键型分析等） |
-| [features/difficulty-estimation.md](features/difficulty-estimation.md) | AI | 难度估计功能文档（6 种估计算法、4/6/7K、LN/RC 段位） |
+| [features/difficulty-estimation.md](features/difficulty-estimation.md) | AI | 难度估计功能文档（8 种估计算法、4/6/7K、LN/RC 段位） |
+| [features/mixed-routing.md](features/mixed-routing.md) | AI | Mixed 路由技术文档（逐条判定顺序 R1–R7 / L1–L5 / C1–C10：何时路由到何算法、精确阈值与常量、R3' `Roxy+XDC1` 对称融合与双向 `≥0.50` 切 XDC1、R4-Hi `XDC1+Azusa` 融合、C8' 兜底与胶囊取值） |
 | [features/pattern-analysis.md](features/pattern-analysis.md) | AI | 键型分析功能文档（RC/LN 键型分布、SV 检测、vibro 检测） |
 | [features/graph-visualization.md](features/graph-visualization.md) | AI | 难度图表可视化功能文档（难度变化图、已玩/未玩着色） |
-| [features/pause-detection.md](features/pause-detection.md) | AI | 暂停检测功能文档（暂停次数检测、图表暂停位置显示） |
+| [features/graph-section-analysis.md](features/graph-section-analysis.md) | AI | 特定时间点谱面分析功能文档（图表选区、.osu 按时间切片、区间跑批、严格门控） |
+| [features/pause-detection.md](features/pause-detection.md) | AI | 暂停检测功能文档（暂停次数检测、图表暂停位置显示、回放/历史结算的静态暂停与 `Pause Data Unavailable`，契约 v11） |
 | [features/mode-tagging.md](features/mode-tagging.md) | AI | 模式标签功能文档（HB/RC/LN/Mix/SV 模式判定） |
 | [features/rework-pp.md](features/rework-pp.md) | AI | ReworkPP 难度表现面板功能文档（5 行柱状图、v2Acc/PP 公式、Classic 感知星数、Max/Live 切换） |
-| [features/telemetry.md](features/telemetry.md) | AI | 匿名使用统计（遥测）功能文档（事件契约、字段白名单、心跳/在线语义、隐私边界） |
+| [features/marathon-correction.md](features/marathon-correction.md) | AI | 马拉松时长修正功能文档（Roxy/Azusa numeric 只降不升修正、均衡条件、taper、缓存/设置链路） |
+| [features/non-4k-feedback.md](features/non-4k-feedback.md) | AI | 非 4K 难度反馈功能文档（6K/7K 的反馈范围与侧选择、双标签拆分、去重键、门控条件） |
+| [features/telemetry.md](features/telemetry.md) | AI | 匿名使用统计（遥测）功能文档（事件契约、字段白名单、心跳/在线语义、隐私边界；§7 为独立的难度反馈数据类别：4K RC + 6K/7K） |
+| [features/multi-source.md](features/multi-source.md) | AI | 多数据源功能文档（Etterna/Malody V/Malody 4 接入、转换器、路由决策表、败方门控、能力边界；osu 传输层一节：原生源 + tosu 兜底 + 浏览器模式不变式） |
+| [features/desktop-shell.md](features/desktop-shell.md) | AI | 桌面壳功能技术文档（架构、目录检测、**契约 v11**、24062 osu 兼容端点与端点下发、窗口操控、构建发布） |
+| [features/content-bar-tabs.md](features/content-bar-tabs.md) | AI | 卡片 Tab 胶囊栏与组合模式（壳专属单模块巡检、`contentBar=None` 隐藏、点击已激活 Tab 强制重算、`combinedMode` 配置/排序、`/shell-config` 传输、复位与已知限制） |
+| [features/osu-native-source.md](features/osu-native-source.md) | AI | osu! 原生源功能文档（壳内只读内存层 stable 签名扫描 / lazer 偏移表、24062 tosu 兼容子集 origin、契约 v11 端点下发（含 `replayHash`）与页面 socket 切流、能力边界、reason 闭集与冻结/保持语义、L0–L3 健康机、锚点失效定位 + lazer 偏移表重建两手册、自检清单） |
+| [features/malody4-source.md](features/malody4-source.md) | AI | Malody 4.3.7 原生客户端数据源功能文档（零注入只读观察三条信号、版本门、谱面库索引与 `mdy4:` 身份、`malody4_selection` 帧与 `reason` 闭集、根目录解析链、路由与已知限制） |
+| [features/malody-od.md](features/malody-od.md) | 人类/AI | 判定档 → 等效 osu!mania OD，**覆盖两个客户端**：Malody 4.3.7 的 PC 表（20 格与逐格 σ*、96% 等精度方法学、窗口值来源、上界 21.3 的理由、FAIR 局限）**与 Malody V 的表**（判定档 × Pro × 倍率、Turbo 补偿、Holds/Taps 转换与复算工装） |
 | [features/presets.md](features/presets.md) | AI | 预设系统功能文档（自拓展 schema、presets.html 管理器、presetStorage、部分预设、导入导出） |
+| [features/lane-acc.md](features/lane-acc.md) | AI | LaneAcc 分轨准确度与 ScoreV1 实时转换（Lazer 原始按键帧/逐判定事件、双口径、score 偏移段、壳专属 space 设置、失败局分母） |
 | [pipeline/README.md](pipeline/README.md) | AI | 管线技术文档类别索引（分析、缓存、设置、mod） |
 | [pipeline/analysis-pipeline.md](pipeline/analysis-pipeline.md) | AI | 分析管线总览：tosu WebSocket -> 谱面获取 -> 解析 -> 估算 -> 显示 的完整数据流 |
 | [pipeline/worker.md](pipeline/worker.md) | AI | Worker 与 runAnalysisPipeline 架构：worker 生命周期、消息协议、纯函数契约、共享解析、WASM-in-worker、stale 粒度 |
 | [pipeline/result-cache.md](pipeline/result-cache.md) | AI | 结果缓存（LRU）机制：缓存键、命中覆盖检查、写入门槛与失效时机 |
 | [pipeline/settings-pipeline.md](pipeline/settings-pipeline.md) | AI | 设置管线：settings.json -> 解析 -> 状态注入 -> 缓存失效与重算触发 |
 | [pipeline/mod-handling.md](pipeline/mod-handling.md) | AI | mod 处理：mod 代码解析、倍速/OD 影响、modSignature 的构成与作用 |
+| [pipeline/converters.md](pipeline/converters.md) | AI | 谱面转换器（sm/ssc/mc → osu）：时间轴烘焙语义、键数推导、测试与 golden 摘要 |
 | [guides/README.md](guides/README.md) | AI | 指南文档类别索引（新增设置、缓存失效等） |
 | [guides/adding-a-setting.md](guides/adding-a-setting.md) | AI | 新增设置项的完整流程指南（settings.json -> 解析器 -> state -> 缓存失效） |
 | [guides/adding-to-worker.md](guides/adding-to-worker.md) | AI | 新增估算器/管线阶段到 worker 的完整流程指南（入口纯化 -> 注册 -> 消费接线 -> golden 扩展） |
@@ -51,7 +66,24 @@
 | [guides/module-conventions.md](guides/module-conventions.md) | AI | 模块编写约定（共享模块约束、导入规范、兼容性要求） |
 | [learnings/README.md](learnings/README.md) | AI | 知识与教训文档类别索引（难度估计算法调优经验、失败记录、方法论） |
 | [learnings/difficulty-estimation.md](learnings/difficulty-estimation.md) | 人类/AI | 难度估计算法调优知识与教训（量化/序数校准/路由规则经验、历史探针结论、方法论） |
+| [learnings/beatmap-identity-cache.md](learnings/beatmap-identity-cache.md) | 人类/AI | 谱面卡片显示错图的排查与修复模式（请求身份与响应体不一致、同 id 换 hash、弱帧合并、缓存/原文 LRU 内容校验） |
 | [breakings/README.md](breakings/README.md) | 人类/AI | 重大破坏性更改说明类别索引（时间戳+内容命名，双语五要素） |
+| [breakings/2026-08-09-perf-analysis-pipeline.md](breakings/2026-08-09-perf-analysis-pipeline.md) | 人类/AI | 分析管线性能优化破坏性说明（worker 单次往返协议、`runAnalysisPipeline` 纯函数、共享模块纯度、缓存失效收窄与命中重派生、vibro 修复披露、perf 验收口径修订；2026-11-12 追加 SunnyWindow / Roxy OD9 Sunny / reference Daniel 复用，perf-only） |
+| [breakings/2026-08-16-preset-system-and-settings-schema.md](breakings/2026-08-16-preset-system-and-settings-schema.md) | 人类/AI | 预设系统与设置 schema 破坏性说明（新增 presets 模块/presets.html/内置预设、设置监听器数据化 `SETTING_HANDLERS`、settings.json 预设分组与按钮、`presetStorage` 单一权威存储、快照系统键剥离、写回幂等化） |
+| [breakings/2026-08-30-marathon-correction-in-estimator.md](breakings/2026-08-30-marathon-correction-in-estimator.md) | 人类/AI | 马拉松时长修正架构重构破坏性说明（管线派生段 → 估算器内嵌、按需前置 Ett 复用、perf 约束遵守、基准双口径） |
+| [breakings/2026-08-30-multi-source-data-sources-and-desktop-shell.md](breakings/2026-08-30-multi-source-data-sources-and-desktop-shell.md) | 人类/AI | 多数据源与桌面壳破坏性说明（外部文本入口、缓存身份/速率签名、设置管线、遥测 client 维度、fetch 语义） |
+| [breakings/2026-09-20-ett-ux-and-companella-capsule.md](breakings/2026-09-20-ett-ux-and-companella-capsule.md) | 人类/AI | Etterna 错误体验与 Companella 胶囊破坏性说明（MinaCalc abort 友好化 + wasm 模块回收、junk file 显式化、融合后胶囊跟随真实来源、新增 `ettErrorCode`/`junkFile`/`Azusa+Companella` 字段与取值） |
+| [breakings/2026-09-21-malody4-native-source.md](breakings/2026-09-21-malody4-native-source.md) | 人类/AI | Malody 4.3.7 第四数据源破坏性说明（零注入只读观察、`mdy4:` 身份、桥契约版本 2→3 与八型帧、`malody4Root`、路由与第四圆点色、插件版本冻结 2.1.0 的后果） |
+| [breakings/2026-09-21-malody4-dynamic-judge-od.md](breakings/2026-09-21-malody4-dynamic-judge-od.md) | 人类/AI | Malody 4 动态判定 OD 破坏性说明（写死 OD 9 → 判定档 × 速率 `-4.56~16.42`、`modSignature` 4 段扩 5 段即自动失效、仅 `malody4` 源受影响） |
+| [breakings/2026-09-24-malody-v-selection-bridge-fork.md](breakings/2026-09-24-malody-v-selection-bridge-fork.md) | 人类/AI | Malody V 选曲桥 fork 化破坏性说明（上游 DLL → `MMAMalodySelection.dll`、叠加界面移除、载荷 8→11 字段、壳契约 v4→v5、动态 OD、缓存键 7 段、安装器不写 cfg） |
+| [breakings/2026-09-26-local-settings-window.md](breakings/2026-09-26-local-settings-window.md) | 人类/AI | 本地设置窗口与离线权威链破坏性说明（权威链收敛为"在线 tosu / 离线本地 `mma-settings.json`"、原"离线读 tosu 文件"一级删除、新增 `settings.html` 第二窗口与三入口、`/shell-config`+`/open-settings` 端点、离线读改写与广播；契约版本/帧型/版本号均不变） |
+| [breakings/2026-09-30-osu-native-memory.md](breakings/2026-09-30-osu-native-memory.md) | 人类/AI | osu! 原生内存传输破坏性说明（壳内只读内存读取 + 24062 tosu 兼容子集 origin、契约 v5→v6 的 `sources.osu` 端点下发、壳主窗恒落 24061、扫描提示与原生抓取重试、插件版本保持 2.1.0 不变；回滚 = `osuTransport:"tosu"` + git revert） |
+| [breakings/2026-10-17-rc-difficulty-feedback.md](breakings/2026-10-17-rc-difficulty-feedback.md) | 人类/AI | RC 难度反馈破坏性说明（默认开启、仅壳、仅 RC；页面五档条 + 壳 native 重算与 Ed25519 签名 + 独立 `feedback.db` 严格入库 + osu! API 校验/限流 + 聚合/admin/CSV + OBS 成对备份；mod 码表扩到完整 mania 表且缓存键不变；插件版本保持 2.1.0） |
+| [breakings/2026-10-25-contentbar-tabs-and-combined-mode.md](breakings/2026-10-25-contentbar-tabs-and-combined-mode.md) | 人类/AI | 卡片 Tab 胶囊栏与组合模式破坏性说明（`contentBar` 删除 `Full`、旧值降级 Auto；壳专属 Tab 单模块巡检、`contentBar=None` 隐藏、点击已激活 Tab 强制重算、`combinedMode` 至少一个模块并按 CSS order 排列；契约/版本不变） |
+| [breakings/2026-10-25-mania-lane-acc.md](breakings/2026-10-25-mania-lane-acc.md) | 人类/AI | LaneAcc 分轨准确度与 ScoreV1 实时转换破坏性说明（Lazer 原始按键帧/逐判定事件、双口径、score 偏移段、壳专属 space 设置、契约 v7→v10） |
+| [breakings/2026-11-10-replay-pauses.md](breakings/2026-11-10-replay-pauses.md) | 人类/AI | 回放暂停破坏性说明（契约 v10→v11、`.osr` 尾部只读解析、`replay_pauses`/`replay_pauses_sync`、24062 `replayHash`、偏移表新增三个哈希字段、2026.921 表已移除） |
+| [breakings/2026-11-11-mixed-rc-fusion-routing.md](breakings/2026-11-11-mixed-rc-fusion-routing.md) | 人类/AI | Mixed 4K RC 路由对称融合与 XDC1 兜底破坏性说明（R3' `Roxy+XDC1` / 双向 `≥0.50` 切 XDC1、低难 C8'、高段 `XDC1+Azusa`、遥测/反馈别名及缓存 `star-v15`） |
+| [breakings/2026-11-18-full-card-rd.md](breakings/2026-11-18-full-card-rd.md) | 人类/AI | 全卡 RD/MR 支持（主分析列变换、选歌→play/历史结算重算、play/replay→结算冻结、stable/ppysb Score.Seed 0x80、契约 v12、缓存 star-v16） |
 
 # English
 
@@ -69,6 +101,7 @@
 - When you think it is appropriate to record experience and lessons learned, write a corresponding knowledge & lessons-learned document, recording the experience, failed attempts, and methodology accumulated during development, tuning, and benchmarking. The document is mainly for humans and AI to read, so it needs to be bilingual. Name the document according to its content and place it in the docs/learnings directory.
 - When making major breaking changes, write a document explaining the changes, marking what was changed and why, to facilitate future code review and testing. The document should be named with a timestamp and the change description, and placed in the docs/breakings directory.
 - When adding or removing documents, add or remove the corresponding index entries in docs/README.md.
+- Do not manually insert line breaks in the main text paragraphs (let the editor soft wrap).
 
 ## Document Index
 
@@ -78,24 +111,38 @@ Use the links to jump to the corresponding document. For documents with the same
 | --- | --- | --- |
 | docs/README.md | Human | This document |
 | [settings.md](settings.md) | Human | Plugin settings guide |
+| [shell-guide.md](shell-guide.md) | Human | Desktop shell tutorial (install, window controls, bridges, troubleshooting; bilingual) |
 | [presets-guide.md](presets-guide.md) | Human | Presets beginner guide (bilingual tutorial, every button explained) |
 | [azusa_algorithm.md](azusa_algorithm.md) | Human/AI | Azusa algorithm document (English) |
 | [roxy_algorithm.md](roxy_algorithm.md) | Human/AI | Roxy algorithm document (English) |
+| [polaris_algorithm.md](polaris_algorithm.md) | Human/AI | Polaris algorithm document (English; table-calibration estimator: 7K RC + LN; 4K/6K fall back to Sunny) |
 | [features/README.md](features/README.md) | AI | Index of feature technical documents (difficulty estimation, pattern analysis, etc.) |
-| [features/difficulty-estimation.md](features/difficulty-estimation.md) | AI | Difficulty estimation document (6 algorithms, 4/6/7K, LN/RC dan tiers) |
+| [features/difficulty-estimation.md](features/difficulty-estimation.md) | AI | Difficulty estimation document (8 algorithms, 4/6/7K, LN/RC dan tiers) |
+| [features/mixed-routing.md](features/mixed-routing.md) | AI | Mixed routing document (step-by-step decision order R1-R7 / L1-L5 / C1-C10: R3' `Roxy+XDC1` symmetric fusion & bidirectional `>=0.50` XDC1 switch, R4-Hi `XDC1+Azusa` fusion, C8' fallback, exact thresholds, and capsule values) |
 | [features/pattern-analysis.md](features/pattern-analysis.md) | AI | Pattern analysis document (RC/LN pattern distribution, SV detection, vibro detection) |
 | [features/graph-visualization.md](features/graph-visualization.md) | AI | Difficulty graph visualization document (difficulty graph, played/unplayed coloring) |
-| [features/pause-detection.md](features/pause-detection.md) | AI | Pause detection document (pause count detection, pause position display on graph) |
+| [features/graph-section-analysis.md](features/graph-section-analysis.md) | AI | Time-range map analysis document (graph selection, .osu time slicing, section pipeline run, strict gating) |
+| [features/pause-detection.md](features/pause-detection.md) | AI | Pause detection document (pause count detection, pause position display on graph, static replay/historical-result pauses with `Pause Data Unavailable`, contract v11) |
 | [features/mode-tagging.md](features/mode-tagging.md) | AI | Mode tagging document (HB/RC/LN/Mix/SV mode judgment) |
 | [features/rework-pp.md](features/rework-pp.md) | AI | ReworkPP performance panel document (5-row bar chart, v2Acc/PP formulas, Classic-aware star rating, Max/Live switching) |
-| [features/telemetry.md](features/telemetry.md) | AI | Anonymous usage statistics (telemetry) document (event contract, field whitelist, heartbeat/online semantics, privacy boundaries) |
+| [features/marathon-correction.md](features/marathon-correction.md) | AI | Marathon duration correction document (Roxy/Azusa numeric lower-only correction, balance gate, taper, cache/settings wiring) |
+| [features/non-4k-feedback.md](features/non-4k-feedback.md) | AI | Non-4K difficulty feedback document (6K/7K feedback scope and side selection, dual-label split, dedup keys, gate conditions) |
+| [features/telemetry.md](features/telemetry.md) | AI | Anonymous usage statistics (telemetry) document (event contract, field whitelist, heartbeat/online semantics, privacy boundaries; §7 covers the separate RC difficulty feedback category) |
+| [features/multi-source.md](features/multi-source.md) | AI | Multi-source document (Etterna, Malody V and Malody 4 integration, converters, routing decision table, osu gate, capability boundaries; a transport-layer section: native osu source + tosu fallback + the browser-only invariant) |
+| [features/desktop-shell.md](features/desktop-shell.md) | AI | Desktop shell technical document (architecture, directory detection, contract v11, the 24062 osu-compatible origin and endpoint delivery, window controls, build & release) |
+| [features/content-bar-tabs.md](features/content-bar-tabs.md) | AI | Card tab capsule bar and Combined mode (shell-only single-section inspection, hidden when `contentBar=None`, active-tab forced recompute, `combinedMode` config/ordering, `/shell-config` transport, resets and known limits) |
+| [features/osu-native-source.md](features/osu-native-source.md) | AI | osu! native source document (in-shell read-only memory layer: stable signature scan vs the lazer offset table, the 24062 tosu-compatible subset origin, contract v11 endpoint delivery (including `replayHash`) and the page's socket-layer switch, capability boundaries, the `reason` closed set with freeze/hold semantics, the L0–L3 health machine, two manuals (locating an anchor failure / regenerating the lazer offset table) and the self-check list) |
+| [features/malody4-source.md](features/malody4-source.md) | AI | Malody 4.3.7 native client data source document (zero-injection read-only observation, version gate, chart library index and `mdy4:` identity, `malody4_selection` frame and the `reason` closed set, root resolution chain, routing and known limitations) |
+| [features/malody-od.md](features/malody-od.md) | Human/AI | Judge level → equivalent osu!mania OD for **both clients**: the Malody 4.3.7 PC table (20 cells with per-cell σ*, the 96%-accuracy equal-precision method, window-value provenance, why the bound is 21.3, the FAIR caveat) **and the Malody V table** (judge × Pro × rate, Turbo compensation, Holds/Taps conversion, recompute tool) |
 | [features/presets.md](features/presets.md) | AI | Preset system document (self-extending schema, presets.html manager, presetStorage, partial presets, export/import) |
+| [features/lane-acc.md](features/lane-acc.md) | AI | LaneAcc per-lane accuracy and live ScoreV1 conversion (Lazer raw replay frames and hit events, dual metrics, score offset section, shell-only space setting, failed-play denominator) |
 | [pipeline/README.md](pipeline/README.md) | AI | Index of pipeline technical documents (analysis, cache, settings, mods) |
 | [pipeline/analysis-pipeline.md](pipeline/analysis-pipeline.md) | AI | Analysis pipeline overview: tosu WebSocket -> beatmap fetch -> parse -> estimate -> display |
 | [pipeline/worker.md](pipeline/worker.md) | AI | Worker and runAnalysisPipeline architecture: worker lifecycle, message protocol, pure-function contract, shared parsing, WASM-in-worker, stale granularity |
 | [pipeline/result-cache.md](pipeline/result-cache.md) | AI | Result cache (LRU) mechanism: cache key, hit coverage check, write gate, invalidation timing |
 | [pipeline/settings-pipeline.md](pipeline/settings-pipeline.md) | AI | Settings pipeline: settings.json -> parse -> state injection -> cache invalidation and recompute trigger |
 | [pipeline/mod-handling.md](pipeline/mod-handling.md) | AI | Mod handling: mod code parsing, speed/OD effects, modSignature composition and purpose |
+| [pipeline/converters.md](pipeline/converters.md) | AI | Chart converters (sm/ssc/mc → osu): timing baking semantics, key-count derivation, tests and golden summary |
 | [guides/README.md](guides/README.md) | AI | Index of guide documents (adding a setting, cache invalidation, etc.) |
 | [guides/adding-a-setting.md](guides/adding-a-setting.md) | AI | Complete guide for adding a setting (settings.json -> parser -> state -> cache invalidation) |
 | [guides/adding-to-worker.md](guides/adding-to-worker.md) | AI | Complete guide for adding an estimator/pipeline stage to the worker (entry purification -> registration -> consumer wiring -> golden extension) |
@@ -103,4 +150,20 @@ Use the links to jump to the corresponding document. For documents with the same
 | [guides/module-conventions.md](guides/module-conventions.md) | AI | Module writing conventions (shared module constraints, import rules, compatibility requirements) |
 | [learnings/README.md](learnings/README.md) | AI | Index of knowledge & lessons-learned documents (difficulty estimation tuning experience, failed attempts, methodology) |
 | [learnings/difficulty-estimation.md](learnings/difficulty-estimation.md) | Human/AI | Difficulty estimation tuning knowledge & lessons (quantization/ordinal-calibration/routing-rule experiences, historical probe conclusions, methodology) |
+| [learnings/beatmap-identity-cache.md](learnings/beatmap-identity-cache.md) | Human/AI | Diagnosing and fixing "the card shows the wrong map" (request identity vs response body, same id/different hash, weak-frame merge, result/text cache content validation) |
 | [breakings/README.md](breakings/README.md) | Human/AI | Index of major breaking-changes documents (timestamp+description naming, bilingual five elements) |
+| [breakings/2026-08-09-perf-analysis-pipeline.md](breakings/2026-08-09-perf-analysis-pipeline.md) | Human/AI | Analysis pipeline perf optimization breaking note (worker single-round-trip protocol, `runAnalysisPipeline` pure function, shared-module purity, cache-invalidation narrowing + hit re-derivation, vibro fix disclosure, perf acceptance-criteria revision; 2026-11-12 addenda: SunnyWindow / Roxy OD9 Sunny / reference Daniel reuse, perf-only) |
+| [breakings/2026-08-16-preset-system-and-settings-schema.md](breakings/2026-08-16-preset-system-and-settings-schema.md) | Human/AI | Preset system & settings schema breaking note (new presets modules/presets.html/built-in presets, data-driven settings listener `SETTING_HANDLERS`, settings.json preset group & buttons, `presetStorage` single source of truth, snapshot system-key stripping, idempotent write-back) |
+| [breakings/2026-08-30-marathon-correction-in-estimator.md](breakings/2026-08-30-marathon-correction-in-estimator.md) | Human/AI | Marathon correction architecture refactor breaking note (pipeline patch → estimator-embedded, on-demand pre-Ett reuse, perf constraints honored, two-tier benchmark semantics) |
+| [breakings/2026-08-30-multi-source-data-sources-and-desktop-shell.md](breakings/2026-08-30-multi-source-data-sources-and-desktop-shell.md) | Human/AI | Multi-source & desktop shell breaking note (external text entry, cache identity/rate signature, settings pipeline, telemetry client dim, fetch semantics) |
+| [breakings/2026-09-20-ett-ux-and-companella-capsule.md](breakings/2026-09-20-ett-ux-and-companella-capsule.md) | Human/AI | Etterna error UX and Companella capsule breaking note (readable MinaCalc aborts plus wasm module recycling, explicit junk-file handling, capsule following the real fusion source, new `ettErrorCode` / `junkFile` / `Azusa+Companella` fields and value) |
+| [breakings/2026-09-21-malody4-native-source.md](breakings/2026-09-21-malody4-native-source.md) | Human/AI | Malody 4.3.7 fourth data source breaking note (zero-injection read-only observation, `mdy4:` identity, bridge contract version 2→3 with eight frame types, `malody4Root`, routing and the fourth dot colour, consequences of the frozen plugin version 2.1.0) |
+| [breakings/2026-09-21-malody4-dynamic-judge-od.md](breakings/2026-09-21-malody4-dynamic-judge-od.md) | Human/AI | Malody 4 dynamic judge OD breaking note (hard-coded OD 9 → judge level × rate `-4.56~16.42`, `modSignature` growing from 4 to 5 segments as automatic invalidation, only the `malody4` source affected) |
+| [breakings/2026-09-24-malody-v-selection-bridge-fork.md](breakings/2026-09-24-malody-v-selection-bridge-fork.md) | Human/AI | Malody V selection bridge forked (upstream DLL → `MMAMalodySelection.dll`, overlay removed, payload 8→11 fields, shell contract v4→v5, dynamic OD, 7-segment cache key, installer writes no cfg) |
+| [breakings/2026-09-26-local-settings-window.md](breakings/2026-09-26-local-settings-window.md) | Human/AI | Local settings window and the offline authority chain breaking note (chain collapsed to "online tosu / offline local `mma-settings.json`", the old "read the tosu file offline" level deleted, a new `settings.html` second window with three entry points, `/shell-config` + `/open-settings` endpoints, offline read-modify-write with broadcast; contract version, frame types and version numbers all unchanged) |
+| [breakings/2026-09-30-osu-native-memory.md](breakings/2026-09-30-osu-native-memory.md) | Human/AI | osu! native memory transport breaking note (in-shell read-only memory reader plus the 24062 tosu-compatible subset origin, contract v5→v6 with `sources.osu` endpoint delivery, the main window always landing on 24061, the scan hint and the native beatmap-fetch retry, the plugin version staying 2.1.0; rollback = `osuTransport:"tosu"` + git revert) |
+| [breakings/2026-10-17-rc-difficulty-feedback.md](breakings/2026-10-17-rc-difficulty-feedback.md) | Human/AI | RC difficulty feedback breaking note (on by default, shell only, RC only; page strip + shell-side native rebuild and Ed25519 signing + a separate strict `feedback.db` + osu! API validation/limits + aggregation/admin/CSV + paired OBS backups; the mod table now covers the full mania set with unchanged cache keys; plugin version stays 2.1.0) |
+| [breakings/2026-10-25-contentbar-tabs-and-combined-mode.md](breakings/2026-10-25-contentbar-tabs-and-combined-mode.md) | Human/AI | Card tab capsule bar and Combined mode breaking note (`contentBar` drops `Full`, legacy value becomes Auto; shell-only tab single-section inspection, hidden when `contentBar=None`, active-tab forced recompute, `combinedMode` with at least one module ordered by CSS `order`; contract/version unchanged) |
+| [breakings/2026-10-25-mania-lane-acc.md](breakings/2026-10-25-mania-lane-acc.md) | Human/AI | LaneAcc per-lane accuracy and live ScoreV1 conversion breaking note (Lazer raw replay frames and hit events, dual metrics, score offset section, shell-only space setting, contract v7→v10) |
+| [breakings/2026-11-10-replay-pauses.md](breakings/2026-11-10-replay-pauses.md) | Human/AI | Replay-pauses breaking note (contract v10→v11, read-only `.osr` tail parsing, `replay_pauses` / `replay_pauses_sync`, 24062 `replayHash`, three new hash offsets, 2026.921 tables removed) |
+| [breakings/2026-11-11-mixed-rc-fusion-routing.md](breakings/2026-11-11-mixed-rc-fusion-routing.md) | Human/AI | Mixed 4K RC symmetric fusion & XDC1 routing breaking note (`Roxy+XDC1` / bidirectional `≥0.50` XDC1 switch on R3', C8' low-band XDC1 rescue, `XDC1+Azusa` on R4-Hi, telemetry/feedback capsule aliases, and cache `star-v15`) |

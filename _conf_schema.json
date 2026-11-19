@@ -61,13 +61,13 @@
   "estimator_algorithm": {
     "description": "估算算法",
     "type": "string",
-    "hint": "可选值：Mixed、Azusa、Roxy、Sunny、SunnyWindow、Daniel、Companella。",
+    "hint": "可选值：Mixed、Azusa、Roxy、Sunny、Daniel、Companella、Polaris、XDC1、Proj7k。",
     "default": "Mixed"
   },
   "etterna_version": {
     "description": "全局 Etterna 版本",
     "type": "string",
-    "hint": "可选值：0.68.0-Unofficial、0.70.0、0.72.0、0.72.3、0.74.0。",
+    "hint": "可选值：0.68.0-Unofficial、0.70.0、0.72.0、0.72.3、0.74.0、0.75.0。",
     "default": "0.72.3"
   },
   "companella_etterna_version": {

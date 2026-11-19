@@ -314,7 +314,7 @@ value   = lowBase × lowGate + (highBase + lowLift) × highGate
 
 Uses `piecewiseBlock` to interpolate through two block tables:
 - **`AZUSA_CALIBRATION_LOW_BLOCKS`**: 17 blocks covering numeric range [1.92, 9.83] → RC [1.0, 10.3]
-- **`AZUSA_CALIBRATION_HIGH_BLOCKS`**: 39 blocks covering numeric range [11.43, 19.35] → RC [10.4, 17.95]
+- **`AZUSA_CALIBRATION_HIGH_BLOCKS`**: 43 blocks covering numeric range [11.4336, 27.0] → RC [10.4, 20.0]
 
 The low and high calibrations are blended by gate weight, providing a smooth transition between the two calibration regimes.
 
@@ -328,24 +328,34 @@ A fitted linear model using 19 interaction terms between `x` (the calibrated val
 
 **Function**: `calibrateAzusaOutputNumeric(value)`
 
-Uses `piecewiseLinear` over **`AZUSA_ISOTONIC_POINTS`**: a 79-point isotonic regression table mapping pre-output values to final RC values. This is the primary calibration table, fitted from the full 526-sample benchmark dataset using the Pool Adjacent Violators Algorithm (PAVA).
+Uses `piecewiseLinear` over **`AZUSA_ISOTONIC_POINTS`**: a 84-point isotonic regression table mapping pre-output values to final RC values. This is the primary calibration table, fitted from the full 526-sample benchmark dataset using the Pool Adjacent Violators Algorithm (PAVA).
 
 ---
 
 ## 10. Stage 6: Reference Correction (`computeReferenceCorrection`)
 
-**Function**: `computeReferenceCorrection(azusaEst, daniel, sunny)`
+**Function**: `computeReferenceCorrection(azusaEst, daniel, sunny, curveHints = null)`
 
 A gated correction applied to the calibrated output in the mid-to-high range [10.0, 17.5]:
 
 | Sub-range | Gate | daniel coeff | sunny coeff |
 |-----------|------|-------------|-------------|
 | [10.0, 11.5) | Linear ramp | 0.10 | 0.06 |
-| [11.5, 12.5) | Full (1.0) | 0.20 | 0.13 |
+| [11.5, 12.5) | Full (1.0) | 0.20 (+ transition) | 0.13 (+ transition) |
 | [12.5, 16.0) | Full (1.0) | 0.40 | 0.25 |
 | [16.0, 17.5) | Linear decay | 0.28 | 0.17 |
 
 Formula: `correction = gate × (coeffD × (daniel - x) + coeffS × (sunny - x))`, clamped to [-1.2, 1.2].
+
+#### 10.1 Stream-Conditioned Gamma Transition
+
+For charts in the `[11.5, 12.5)` range where Daniel already indicates a Gamma-tier difficulty (`refD > 12.0`) and the chart exhibits low chord density (`chordRate < 0.45`, indicating pure single-note speed streams):
+- `streamWeight = clamp((0.45 - chordRate) / 0.15, 0, 1)`
+- `t = clamp((refD - 12.0) / 0.8, 0, 1) * streamWeight`
+- `coeffD = 0.20 + 0.20 * t`
+- `coeffS = 0.13 + 0.12 * t`
+
+This smooth transition eliminates the boundary discontinuity at `x = 12.5` caused by PAVA isotonic plateaus on pure speed streams without disturbing dense chorded or tech charts.
 
 This leverages the observation that Daniel and Sunny have higher discriminative power than Azusa in the Alpha–Eta range (RC 11–17), while Azusa is more reliable at the extremes.
 
@@ -357,15 +367,31 @@ This leverages the observation that Daniel and Sunny have higher discriminative 
 
 **`AZUSA_CALIBRATION_LOW_BLOCKS`** (17 entries): Maps blend values in [1.92, 9.83] to RC [1.0, 10.3]. Each entry is `[xMin, xMax, rcValue]`. The block structure allows for piecewise-constant calibration with linear transitions between blocks.
 
-**`AZUSA_CALIBRATION_HIGH_BLOCKS`** (39 entries): Maps blend values in [11.43, 19.35] to RC [10.4, 17.95]. Same structure as low blocks but with finer granularity in the upper range.
+**`AZUSA_CALIBRATION_HIGH_BLOCKS`** (43 entries): Maps blend values in [11.4336, 27.0] to RC [10.4, 20.0]. Same structure as low blocks but with finer granularity in the upper range.
 
 ### 11.2 Isotonic Calibration Table
 
-**`AZUSA_ISOTONIC_POINTS`** (79 entries): Each entry is `[preOutputValue, rcValue]`. Fitted using the Pool Adjacent Violators Algorithm (PAVA) on 526 benchmark samples. This is a monotonic non-decreasing function that provides the final RC mapping.
+**`AZUSA_ISOTONIC_POINTS`** (84 entries): Each entry is `[preOutputValue, rcValue]`. Fitted using the Pool Adjacent Violators Algorithm (PAVA) on 526 benchmark samples. This is a monotonic non-decreasing function that provides the final RC mapping.
 
 ---
 
-## 12. Algorithm Complexity
+## 12. Marathon Duration Correction (Estimator-Embedded)
+
+Since v2.0.2, Azusa applies a **marathon duration correction** inside the estimator itself: `options.marathonCorrection = { durationS, ettValues }` (optional; absent or missing MSD skillsets → no correction, bit-identical to the legacy output). The corrected `finalNumeric` drives `numericDifficulty`, `estDiff` and `star` derivation, so the estimator output is the final difficulty value — no post-output pipeline patching. Direct calls without the option (e.g. the benchmark runner) yield the uncorrected baseline.
+
+**Mechanism and inspiration.** Inspired by the marathon correction in [Dan-Overlay](https://github.com/acarranzao1a-png/Dan-Overlay) (`pipeline.py` `_merge_primary_and_mina`, calibrated against the 6th–10th Reform Marathon Packs), which lowers the estimate of long, evenly difficult charts where accumulated stamina strain inflates the difficulty beyond the peak sections' true demand. The mechanism is ported with the correction target changed from SR/DP to Azusa's `numericDifficulty` (dan-tier numeric) and the taper moved from the SR domain to the numeric domain. See [features/marathon-correction.md](features/marathon-correction.md).
+
+**Trigger conditions** (all must hold):
+- drain duration > 300 s (last − first note start, unscaled by rate);
+- Etterna MSD skillsets available, and skillset balance holds: `max(jack, stream, stamina, tech)/total < 0.45` with `jack = max(JackSpeed, Chordjack)`, `stream = max(Stream, Jumpstream)`, `stamina = 0.7·Stamina + 0.3·Handstream`, `tech = Technical`;
+- `numericDifficulty` is a finite number (scope-out/invalid null results are never touched);
+- numeric < 16 (taper, see below).
+
+**Correction** (lower-only, never raises): `corr = min(0.50, 0.40 × ln(1 + excessMin)) × taper(numeric)`, where `excessMin = (durationS − 300)/60`. The duration penalty is **log-saturating** (sub-linear) so that adjacent dan-tier course charts never swap order (the linear penalty difference exceeded the base numeric gap on REFORM 2nd 8th/9th; verified zero new inversions across all course packs). `taper(numeric) = 1` for numeric ≤ 10, linear to 0 at numeric ≥ 16. `estDiff` is redriven from the corrected numeric via `numericToRcLabel`; the star field is untouched (already normalized to the Sunny raw star for Azusa display).
+
+**Calibration note.** Parameters were calibrated on the benchmark's `course` subset (34 maps, all RC; user-authorized) with an order-constrained grid; `scale = 0.40`, `cap = 0.50` chosen (merged MAE 0.3167, zero new inversions vs the linear 0.20/min version's 0.3225 which failed the 8th/9th order check). Validation: course MAE 0.4782 → 0.3544 (Azusa), Bias −0.424 → −0.085; see the calibration table in [features/marathon-correction.md](features/marathon-correction.md) §8.
+
+## 13. Algorithm Complexity
 
 - **Time**: O(n) where n = number of tap notes. The main loop in `buildDifficultyCurve` processes each note once with constant work per note (4 decay windows × 5 skills = 20 exponential decays). The `summarize` step sorts 5 arrays of size n: O(n log n). Overall complexity is dominated by O(n log n).
 

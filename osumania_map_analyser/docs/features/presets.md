@@ -27,7 +27,7 @@
 ### 预设管理器（浏览器，`presets.html`）
 
 - 打开 `http://<host>:<port>/<插件目录名>/presets.html`（默认 `http://localhost:24050/<插件目录名>/presets.html`）。
-- **顶部操作栏**（独立、sticky）：New（清空编辑器，需确认）、Save（保存/覆盖，需确认）、Apply Checked（应用勾选字段，需确认）、Export Current（导出当前编辑态）、Export All、Import、Guide（新窗口打开 [预设新手教程](../presets-guide.md)）。
+- **顶部操作栏**（独立、sticky）：New（清空编辑器，需确认）、Save（保存/覆盖，需确认）、Apply Checked（应用勾选字段，需确认）、Load Current（载入当前生效设置）、Select All / Invert / Clear Selection（勾选辅助）、Export Current（导出当前编辑态）、Export All、Import、Guide（外部链接——经 `js/app/externalLink.js` 的 `openExternalLink()` 打开 GitHub 上的 [presets-guide](https://github.com/LeoBlackMT/osumania_map_analyser/blob/main/docs/presets-guide.md)）。
 - **左侧列表**（分类）：SYSTEM 分类 = Default（首行，动态出厂快照）+ 10 个内置预设 + LastSavedPreset（只读行）；My Presets = 自定义预设（Custom1-3 固定槽仅 Edit/Apply/Export）。每行按钮：Edit（加载到编辑区并高亮）、Apply（一键应用，需确认）、自定义行另有 Rename/Delete/Export。
 - **右侧编辑区**：Preset Info 面板（Name/Description/Version 可编辑，ID 自动生成只读）+ 自动生成的设置表单（来自 settings.json，header 分组；`preset`/`presetStorage` 系统设置排除不显示，`wsEndpoint` 默认不勾选）。每行左侧复选框（勾选 = 纳入预设）与右侧布尔设置控件尺寸一致。
 - **滚动**：页面所有可滚动区域（左侧列表、右侧表单）使用自定义细滚动条（配色随主题，圆角）。
@@ -52,7 +52,7 @@
 ### 自拓展机制（schema.js）
 
 - **applier 动态注册**：遍历 `settings.json`，对每个 uniqueID 生成 `apply{首字母大写}Setting` 并在 settings.js 的模块命名空间中查找；找到即注册，找不到（header/button/`preset`/`presetStorage`）自动跳过。个别命名例外：`enablePauseDetection → applyPauseDetectionSetting`。
-- **getter 动态生成**：默认 `state[key]` 直读；例外表覆盖 `user*` 三件套（contentBar/srText/diffText）、`pauseDetectionEnabled`、`pauseDetectionThresholdMs`（字符串化）、`vibroDetection`。
+- **getter 动态生成**：默认 `state[key]` 直读；例外表覆盖 `user*` 三件套（contentBar/srText/diffText）、`pauseDetectionEnabled`、`vibroDetection`。
 - **recompute/cache 键集**：`SETTING_RECOMPUTE_KEYS` / `SETTING_CACHE_KEYS` 由 `settings.js` 导出（settings.js 的监听器已数据化为 `SETTING_HANDLERS` 表），预设模块直接 import，单一来源。
 - **效果**：新增设置 = 改 settings.json（uniqueID/value）+ settings.js（parse/apply 各一）两处，预设系统（表单、快照、应用、重算、缓存）自动跟随。
 
@@ -83,10 +83,52 @@ tosu WebSocket 设置广播
 - 自动保存节流：`recentlyWritten` 1.5s 窗口，防止滞后页面把预设应用 echo 误判为手动修改。
 - 跨页面/跨 origin 同步：全部通过 tosu 设置广播（presetStorage + lastWritten 随每次写回一并下发），任意页面改动所有页面即时一致。
 
+## 离线（壳）模式（桌面壳设置窗口）
+
+非 tosu 用户在桌面壳的**设置窗口**里管理预设（页面 `settings.html`，由壳的本机 24061 提供）。这条路径不依赖 tosu，也不依赖 `window.COUNTER_PATH`（该全局在 24061 页恒为 `undefined`——它由 tosu 注入），靠的是 **transport 注入点 + 壳的 `/settings` 端点**。
+
+### transport 注入点（`core.js` + 两个实现）
+
+- `core.js` 导出 `setPresetTransport(t)` / `getPresetTransport()`；模块级 `transport` 默认 = `createTosuTransport()`（`presets/tosuTransport.js`，把旧逻辑逐字搬成一个实现：tosu `/api/counters/settings/<folder>` 读写 + `COUNTER_PATH` 依赖）。
+- 设置页在 `initPresets()` **之前**调用 `setPresetTransport(createShellPresetTransport())`（`js/app/settingsPage/shellTransport.js`）。它是**薄适配器**：组合框架无关的 `presets/shellTransport.js`（B1/B2 的唯一实现）与 bridge `settings` 帧的 pull-on-notify，不重复实现写语义。
+- 接口（`core.js` 的三个 I/O 函数改为委托，`initPresets()` 的事件源按 `transport.mode` 双路——`"tosu"` 仍走 `socket.commands`，`"shell"` 走 `transport.subscribe`）：`{mode, isAvailable(), readStore(), writeLibrary(serialized), writeBack(values), subscribe(handler), requestInitial()}`。
+- **B1（全量合并基点）**：壳侧所有写 = `{...base, ...patchObject}`，`base` = **最近一次成功 GET** 的响应体；从未成功 GET（`base === null`）时**拒写**——不发请求、`writeLibrary()` 返回 `false`、不推进持久化指纹，并回调失败。壳侧据此做请求键优先的读-改-写，所以"全量 body + 可能过期的 base"也不会丢键。
+- **B2（成功以 2xx 为准 + 失败可见 + 有界重试）**：`writeLibrary` 的同步布尔沿用旧语义（已发出即 `true`），但收到非 2xx / 网络错误时置 `writeOk = false`——它**只影响下一次的返回值**（`core.js` 因此不推进指纹），**不影响发送**：每次调用都照常发请求，一次失败不会把后续写全部短路；2s 后**有界重试一次**（把期间新攒的 patch 一起带上），任何 2xx（含该次重试）复位 `writeOk = true`，重试再失败不排下一次；失败经 `onWriteError` 交给页面状态条显示。
+
+### 两库隔离
+
+- tosu 模式与壳模式的预设库是**两份独立的 `presetStorage`**：tosu 侧在 tosu 设置文件（`settings/<插件目录名>.json`）里，壳侧在 exe 旁的 `mma-settings.json` 里。两者互不同步、互不覆盖——切换环境（例如装上 tosu）后看到的是那一侧自己的库，不会"把壳里的预设搬到 tosu"。
+- 因此壳页没有"tosu 在线时改预设"这条路径：在线时预设区整体不可用（只显示只读提示 + tosu Presets 页面地址，`manager.js` 那个模块根本不会被 import）。
+
+### 无 LastSavedPreset 行
+
+`manager.js` 只在**非设置页**（`document.documentElement.dataset.mmaPage !== "settings"`，即 `presets.html`）渲染 LastSavedPreset 行（`OFFLINE_SCOPE` 守卫；`presets/index.json` 内的内置预设与 Default 行不受影响）。LastSavedPreset 是 **tosu 设置页手动修改**的跟随标记，壳页没有 tosu 设置广播这条来源，渲染它只会得到一个永远不动的空行。
+
+### pull-on-notify 投递
+
+壳是"有变化才推"的（来源切换 / 本地文件变化 / 离线 POST），推的是帧通知；设置页收到 bridge `settings` 帧后**重新 GET `/settings`**（pull-on-notify），与上次投递不同才向 transport 的全部订阅者投递一个 tosu 形状的包 `{command:"getSettings", message: values}`——`core.js` 因此复用它的"首包基线"路径（内含 `presetStorage` 与 `lastWritten`，跨页面/跨刷新一致）。在线（`state.shellTosuOnline === true`）时只刷新 `base`、**不投递**（页面处于只读，库不需要更新）。
+
+### 设置窗口的预设编辑器保留勾选列
+
+设置窗口的预设区**整体复用** `manager.js`/`form.js`，因此编辑器的"勾选要包含的项"列（include checkbox）与 `presets.html` **一致地保留**。这是**预设编辑器**（部分快照）的语义，不是设置面板的语义——设置面板（`settingsPage/settingsForm.js`）才是无勾选列、改一项即提交。两者不要混为一谈。
+
+### Guide 链接在壳窗口内可用（剪贴板兜底）
+
+顶部操作栏的 **Guide** 按钮（`manager.js` 的 `#act-guide`）以前在壳窗口里点了没反应：Tauri/WebView2 把 `<a target="_blank">` 的新窗口点击吞掉，页面既没打开浏览器也没给反馈。现在它与设置页的 Links 行共用 `js/app/externalLink.js openExternalLink()`：先 `window.open(url, "_blank", "noopener")`，返回空（壳窗口拦下）就把地址复制到剪贴板，并 toast 提示 `LINK_COPIED_NOTICE`（`Link copied — open it in your browser.`）。点击一律 `preventDefault()`，不会把页面导航走；浏览器里的 `presets.html` 行为不变（正常打开新标签页）。
+
 ## 注意事项
 
 1. 内置预设名（`presets/index.json` 的 `name`）必须与 `settings.json` 的 `preset` options 一致（不一致时 dashboard 选择后 `applyPresetByName` 找不到 → 回退 Default）。
 2. 新增设置时：settings.js 的 `SETTING_HANDLERS` 加一行（parse/apply 对）并同步 `SETTING_RECOMPUTE_KEYS`/`SETTING_CACHE_KEYS` 集合；`schema.js` 无需改动。
 3. `preset` 与 `presetStorage` 两个 uniqueID 是系统保留键：前者是预设选择器（不参与快照应用），后者是预设库存储（不参与手动修改判定）。
-4. 系统预设的 `pauseDetectionThreshold` 为字符串（如 `"500"`），与 `state.pauseDetectionThresholdMs`（数字）在 getter 中互转。
-5. 部分快照语义：应用任意预设只覆盖快照中存在的键；"Default" 是全量出厂快照（唯一全量预设）。
+4. 部分快照语义：应用任意预设只覆盖快照中存在的键；"Default" 是全量出厂快照（唯一全量预设）。
+
+## 壳专属快照键（v8）
+
+`SHELL_ONLY_SNAPSHOT_KEYS` 当前包含 `combinedMode` 与 `laneAccSpaceMode`：
+
+- 只在壳窗口捕获/应用；浏览器/OBS 页面导入时由 `io.js` 自动剥离并提示。
+- 表单侧 `SHELL_FORM_KEYS` 对应 `shellCombinedEnabled` / `shellCombinedModules` / `shellLaneAccSpaceMode`；
+  `collectCheckedSnapshot()` 把勾选项合并为 `combinedMode` 对象与 `laneAccSpaceMode` 字符串。
+- 应用时 `snapshot.js` 调用 `applyLaneAccSpaceMode()` 并 `postShellConfigPatch({ laneAccSpaceMode })`
+  落盘 `mma-shell-config.json`；它**不**进 `SETTING_CACHE_KEYS` / `SETTING_RECOMPUTE_KEYS`。

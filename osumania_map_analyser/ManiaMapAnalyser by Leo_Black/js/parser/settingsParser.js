@@ -12,9 +12,13 @@ export function normalizeContentBarValue(value) {
     if (lowered === "pattern") return "Pattern";
     if (lowered === "etterna") return "Etterna";
     if (lowered === "graph") return "Graph";
-    if (lowered === "full") return "Full";
+    // 旧版 contentBar 的 "Full" 已移除：桌面壳改用 combinedMode；tosu 侧
+    // 静默降级为 Auto，避免旧配置继续把多模块塞进叠加层。
+    if (lowered === "full") return "Auto";
     if (lowered === "none") return "None";
     if (lowered === "reworkpp") return "ReworkPP";
+    // 旧命名 HandAcc 迁移到 LaneAcc。
+    if (lowered === "laneacc" || lowered === "handacc") return "LaneAcc";
     return null;
 }
 
@@ -47,8 +51,26 @@ export function normalizeEstimatorAlgorithmValue(value) {
     if (lowered === "rework") return "Sunny";
     if (lowered === "direct") return "Sunny";
     if (lowered === "daniel") return "Daniel";
+    if (lowered === "polaris") return "Polaris";
+    if (lowered === "xdc1") return "XDC1";
+    if (lowered === "proj7k") return "Proj7k";
     if (lowered === "companella") return "Companella";
     if (lowered === "campanella") return "Companella";
+    return null;
+}
+
+export function normalizeGameClientValue(value) {
+    if (typeof value !== "string") {
+        return null;
+    }
+
+    const lowered = value.trim().toLowerCase();
+    if (lowered === "auto") return "Auto";
+    if (lowered === "osu!" || lowered === "osu") return "Osu!";
+    if (lowered === "etterna") return "Etterna";
+    // 必须放在精确匹配 "malody" 之前（Malody 4 与 Malody V 是两个独立源）。
+    if (lowered === "malody4" || lowered === "malody 4" || lowered === "malody-4") return "Malody4";
+    if (lowered === "malody") return "Malody";
     return null;
 }
 
@@ -366,6 +388,12 @@ export function createSettingsParsers(appConfig) {
         return appConfig.defaults.companellaEtternaVersion;
     }
 
+    function parseGameClientValue(settingsPayload) {
+        const value = extractSettingValue(settingsPayload, "gameClient");
+        const normalized = normalizeGameClientValue(value);
+        return normalized || appConfig.defaults.gameClient || "Auto";
+    }
+
     function parseEnablePauseDetectionValue(settingsPayload) {
         const value = extractSettingValue(settingsPayload, "enablePauseDetection");
         return normalizeBooleanSetting(value, appConfig.defaults.pauseDetectionEnabled);
@@ -502,17 +530,6 @@ export function createSettingsParsers(appConfig) {
         return normalizeBooleanSetting(value, appConfig.defaults.useOsuFont);
     }
 
-    function parsePauseDetectionThresholdValue(settingsPayload) {
-        const value = extractSettingValue(settingsPayload, "pauseDetectionThreshold");
-        if (value !== undefined && value !== null) {
-            const num = Number(value);
-            if (Number.isFinite(num) && num > 0) {
-                return Math.round(num);
-            }
-        }
-        return appConfig.defaults.pauseDetectionThresholdMs;
-    }
-
     function parseDisplay6kLevelValue(settingsPayload) {
         const value = extractSettingValue(settingsPayload, "display6kLevel");
         return normalizeBooleanSetting(value, appConfig.defaults.display6kLevel);
@@ -569,6 +586,11 @@ export function createSettingsParsers(appConfig) {
         return normalizeBooleanSetting(value, appConfig.defaults.enableTelemetry);
     }
 
+    function parseEnableDifficultyFeedbackValue(settingsPayload) {
+        const value = extractSettingValue(settingsPayload, "enableDifficultyFeedback");
+        return normalizeBooleanSetting(value, appConfig.defaults.enableDifficultyFeedback);
+    }
+
     return {
         parseEnablePatternValue,
         parseContentBarValue,
@@ -582,7 +604,6 @@ export function createSettingsParsers(appConfig) {
         parseCompanellaEtternaVersionValue,
         parseEnablePauseDetectionValue,
         parseEnableResultCacheValue,
-        parsePauseDetectionThresholdValue,
         parseVibroDetectionValue,
         parseEnableEtternaRainbowBarsValue,
         parseEnableStatusMarqueeValue,
@@ -608,5 +629,7 @@ export function createSettingsParsers(appConfig) {
         parseEnableAnalyzeLNValue,
         parseEnableAlwaysShowLNDifficultyValue,
         parseEnableTelemetryValue,
+        parseEnableDifficultyFeedbackValue,
+        parseGameClientValue,
     };
 }

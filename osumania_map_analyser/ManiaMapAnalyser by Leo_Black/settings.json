@@ -88,10 +88,18 @@
 		"value": ""
 	},
 	{
+		"uniqueID": "showModeTagCapsule",
+		"type": "checkbox",
+		"title": "Map Tag Capsule",
+		"description": "Show the beatmap's tag capsule (HB/RC/LN/Mix/SV) at bottom-left.",
+		"options": [],
+		"value": true
+	},
+	{
 		"uniqueID": "contentBar",
 		"type": "options",
 		"title": "Card Body Content",
-		"description": "Select what to show in the card body. Full shows Pattern, Etterna and Graph together.",
+		"description": "Select what to show in the card body. Auto follows the chart's LN ratio.",
 		"options": [
 			"None",
 			"Auto",
@@ -99,7 +107,7 @@
 			"Etterna",
 			"Graph",
 			"ReworkPP",
-			"Full"
+			"LaneAcc"
 		],
 		"value": "Auto"
 	},
@@ -133,14 +141,6 @@
 			"InterludeSR"
 		],
 		"value": "Difficulty"
-	},
-	{
-		"uniqueID": "showModeTagCapsule",
-		"type": "checkbox",
-		"title": "Map Tag Capsule",
-		"description": "Show the beatmap's tag capsule (HB/RC/LN/Mix/SV) at bottom-left.",
-		"options": [],
-		"value": true
 	},
 	{
 		"uniqueID": "hTheme",
@@ -183,14 +183,6 @@
 		"value": true
 	},
 	{
-		"uniqueID": "customBackgroundColor",
-		"type": "color",
-		"title": "Custom Background Color",
-		"description": "[Requires Lazer Card Theme] Use a custom color instead of sampling the beatmap's background. Set to pure black (#000000) to disable.",
-		"options": [],
-		"value": "#000000"
-	},
-	{
 		"uniqueID": "enableEtternaRainbowBars",
 		"type": "checkbox",
 		"title": "Rainbow Bars",
@@ -215,12 +207,12 @@
 		"value": true
 	},
 	{
-    	"uniqueID": "enableLNDifficulty",
-    	"type": "checkbox",
-    	"title": "LN Star Rating",
-    	"description": "[Require Improve Sunny LN Estimation]Show Rework Star Rating values in LN algorithms.",
-    	"options": [],
-    	"value": false
+		"uniqueID": "enableLNDifficulty",
+		"type": "checkbox",
+		"title": "LN Star Rating",
+		"description": "[Require Improve Sunny LN Estimation]Show Rework Star Rating values in LN algorithms.",
+		"options": [],
+		"value": false
 	},
 	{
 		"uniqueID": "reverseCardExtendDirection",
@@ -229,6 +221,14 @@
 		"description": "Anchor card bottom and extend upwards when card needs to extend.",
 		"options": [],
 		"value": false
+	},
+	{
+		"uniqueID": "customBackgroundColor",
+		"type": "color",
+		"title": "Custom Background Color",
+		"description": "[Requires Lazer Card Theme] Use a custom color instead of sampling the beatmap's background. Set to pure black (#000000) to disable.",
+		"options": [],
+		"value": "#000000"
 	},
 	{
 		"uniqueID": "cardVisibility",
@@ -356,25 +356,12 @@
 		"value": true
 	},
 	{
-    	"uniqueID": "enableAnalyzeLN",
-    	"type": "checkbox",
-    	"title": "Analyze LN Parts",
-    	"description": "[Require Improve Sunny LN Estimation]Analyze the percentage of LN/HB/Mix/RC parts in beatmap.",
-    	"options": [],
-    	"value": false
-	},
-	{
-		"uniqueID": "pauseDetectionThreshold",
-		"type": "options",
-		"title": "Pause Detection Threshold",
-		"description": "Set the minimum duration (ms) for a freeze to be counted as a pause. Higher values reduce false positives from game lag.",
-		"options": [
-			"100",
-			"200",
-			"500",
-			"1000"
-		],
-		"value": "500"
+		"uniqueID": "enableAnalyzeLN",
+		"type": "checkbox",
+		"title": "Analyze LN Parts",
+		"description": "[Require Improve Sunny LN Estimation]Analyze the percentage of LN/HB/Mix/RC parts in beatmap.",
+		"options": [],
+		"value": false
 	},
 	{
 		"uniqueID": "estimatorAlgorithm",
@@ -386,8 +373,11 @@
 			"Azusa",
 			"Roxy",
 			"Sunny",
+			"Polaris",
 			"Daniel",
-			"Companella"
+			"Companella",
+			"XDC1",
+			"Proj7k"
 		],
 		"value": "Mixed"
 	},
@@ -401,7 +391,8 @@
 			"0.70.0",
 			"0.72.0",
 			"0.72.3",
-			"0.74.0"
+			"0.74.0",
+			"0.75.0"
 		],
 		"value": "0.72.3"
 	},
@@ -415,7 +406,8 @@
 			"0.70.0",
 			"0.72.0",
 			"0.72.3",
-			"0.74.0"
+			"0.74.0",
+			"0.75.0"
 		],
 		"value": "0.74.0"
 	},
@@ -440,6 +432,14 @@
 		"type": "checkbox",
 		"title": "Anonymous Usage Statistics",
 		"description": "Send anonymous usage statistics (no username, no beatmap info, no IP) to the project's telemetry server. You can turn this off anytime.",
+		"options": [],
+		"value": true
+	},
+	{
+		"uniqueID": "enableDifficultyFeedback",
+		"type": "checkbox",
+		"title": "Difficulty Feedback (Desktop Shell Only)",
+		"description": "After finishing an osu!mania map in the desktop shell, show a five-point rating for the estimated difficulty. 4K is RC-only; 6K/7K support RC/LN/Mix/HB/SV (two-label charts ask about one side). Ratings and the beatmap ID are sent to the project server to find maps the estimator gets wrong. No accuracy, score, or username is sent.",
 		"options": [],
 		"value": true
 	},
@@ -476,12 +476,12 @@
 		"value": true
 	},
 	{
-    	"uniqueID": "enableAlwaysShowLNDifficulty",
-    	"type": "checkbox",
-    	"title": "Always Show LN Difficulty",
-    	"description": "Always show LN Difficulty even when LN% is too low or LN is too simple.",
-    	"options": [],
-    	"value": false
+		"uniqueID": "enableAlwaysShowLNDifficulty",
+		"type": "checkbox",
+		"title": "Always Show LN Difficulty",
+		"description": "Always show LN Difficulty even when LN% is too low or LN is too simple.",
+		"options": [],
+		"value": false
 	},
 	{
 		"uniqueID": "presetStorage",

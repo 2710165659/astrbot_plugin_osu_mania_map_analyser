@@ -1,4 +1,4 @@
-﻿import { xToColumn } from "./noteColumn.js";
+import { xToColumn } from "./noteColumn.js";
 
 function stringToInt(value) {
     return Math.trunc(Number.parseFloat(value));
@@ -23,6 +23,7 @@ export class OsuFileParser {
     this.osuText = osuText;
     this.od = -1;
     this.columnCount = -1;
+    this.specialStyle = 0;
     this.columns = [];
     this.noteStarts = [];
     this.noteEnds = [];
@@ -35,11 +36,13 @@ export class OsuFileParser {
     this.breaks = [];
     this.objectIntervals = [];
     this.timingPoints = [];
+    this._tpTimes = null;
     }
 
     getParsedData() {
     return {
             columnCount: this.columnCount,
+            specialStyle: this.specialStyle,
             columns: this.columns,
             noteStarts: this.noteStarts,
             noteEnds: this.noteEnds,
@@ -122,6 +125,16 @@ export class OsuFileParser {
         }
             }
 
+            if (line.includes("SpecialStyle:")) {
+        const stylePart = line.split(":")[1];
+        if (stylePart != null) {
+                    const style = Number.parseInt(stylePart.trim(), 10);
+                    if (Number.isInteger(style) && style >= 0 && style <= 2) {
+            this.specialStyle = style;
+                    }
+        }
+            }
+
             if (line.includes("Mode:")) {
         const modePart = line.split(":")[1];
         if (modePart != null) {
@@ -151,6 +164,7 @@ export class OsuFileParser {
             this.timingPoints = [[0, 500.0]];
     }
     this.timingPoints.sort((a, b) => a[0] - b[0]);
+    this._tpTimes = this.timingPoints.map((tp) => tp[0]);
 
     if (this.status !== "Fail" && this.status !== "NotMania") {
             this.status = "OK";
@@ -221,7 +235,7 @@ export class OsuFileParser {
 
     getBeatLengthAt(timeMs) {
     if (!this.timingPoints.length) return 500.0;
-    const times = this.timingPoints.map((tp) => tp[0]);
+    const times = this._tpTimes || (this._tpTimes = this.timingPoints.map((tp) => tp[0]));
     const idx = bisectRight(times, Math.trunc(timeMs)) - 1;
     if (idx < 0) return this.timingPoints[0][1];
     return this.timingPoints[idx][1];

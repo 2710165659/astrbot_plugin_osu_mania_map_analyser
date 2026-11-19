@@ -5,7 +5,16 @@
  * manager.js stays the single owner of page state.
  */
 
+import { t } from "../i18n/index.js";
+import { state } from "../core/appContext.js";
+import { isShellRuntime } from "../feedback/feedbackSpec.js";
+import { parseCombinedModeModuleList } from "../ui/combinedMode.js";
+
 const EXCLUDED_KEYS = new Set(["preset", "presetStorage"]);
+
+// 桌面壳专属表单键（仅壳内渲染）。它们不直接进快照：collectCheckedSnapshot
+// 把勾选的字段合并成一个 `combinedMode` 对象，未勾选的字段回落当前卡片 state。
+const SHELL_FORM_KEYS = new Set(["shellCombinedEnabled", "shellCombinedModules", "shellLaneAccSpaceMode"]);
 
 /**
  * @param {object} api
@@ -26,6 +35,12 @@ export function createForm(api) {
         formEl.className = "presets-form";
         wrap.appendChild(formEl);
         setFormEl(formEl);
+
+        // 桌面壳专属组永远在最前（在「模块自定义」等所有 settings.json 分组
+        // 之前）；浏览器/OBS 页面不支持这些字段，整组不渲染。
+        if (isShellRuntime()) {
+            formEl.appendChild(buildShellGroup());
+        }
 
         let currentGroup = null;
         let pendingHeader = null;
@@ -49,7 +64,7 @@ export function createForm(api) {
                 if (pendingHeader) {
                     const title = document.createElement("h2");
                     title.className = "presets-group-title";
-                    title.textContent = pendingHeader.title;
+                    title.textContent = t(`settings.${pendingHeader.uniqueID}.title`, pendingHeader.title);
                     currentGroup.appendChild(title);
                     pendingHeader = null;
                 }
@@ -57,6 +72,42 @@ export function createForm(api) {
             }
             currentGroup.appendChild(buildSettingRow(entry));
         }
+    }
+
+    /**
+     * 「桌面壳专属」组：combinedMode 的开关与模块顺序两行。初值取当前卡片
+     * state（Load Current 之外唯一的实时来源），默认不勾选。
+     */
+    function buildShellGroup() {
+        const group = document.createElement("div");
+        group.className = "presets-group presets-group-shell";
+        const title = document.createElement("h2");
+        title.className = "presets-group-title";
+        title.textContent = t("ui.presets.shellGroup.title", "Desktop Shell Only");
+        group.appendChild(title);
+        group.appendChild(buildSettingRow({
+            uniqueID: "shellCombinedEnabled",
+            type: "checkbox",
+            value: state.combinedModeEnabled === true,
+            title: "Combined mode",
+            description: "Show several card sections at once (desktop shell only).",
+        }));
+        group.appendChild(buildSettingRow({
+            uniqueID: "shellCombinedModules",
+            type: "text",
+            value: [...state.combinedModeModules].join(", "),
+            title: t("ui.shell.combinedMode.modulesTitle", "Sections and order"),
+            description: t("ui.shell.combinedMode.modulesDescription", "Comma-separated: Pattern, Etterna, Graph, ReworkPP, LaneAcc"),
+        }));
+        group.appendChild(buildSettingRow({
+            uniqueID: "shellLaneAccSpaceMode",
+            type: "options",
+            options: ["independent", "left", "right"],
+            value: state.laneAccSpaceMode || "independent",
+            title: t("ui.shell.laneAcc.space.title", "Odd-key middle lane"),
+            description: t("ui.shell.laneAcc.space.description", "independent = separate Space hand; left/right = join that hand."),
+        }));
+        return group;
     }
 
     function buildSettingRow(entry) {
@@ -79,8 +130,8 @@ export function createForm(api) {
 
         const info = document.createElement("span");
         info.className = "presets-setting-info";
-        info.innerHTML = `<span class="presets-setting-title">${escapeHtml(entry.title)}</span>`
-            + (entry.description ? `<span class="presets-setting-desc">${escapeHtml(entry.description)}</span>` : "");
+        info.innerHTML = `<span class="presets-setting-title">${escapeHtml(t(`settings.${key}.title`, entry.title))}</span>`
+            + (entry.description ? `<span class="presets-setting-desc">${escapeHtml(t(`settings.${key}.description`, entry.description))}</span>` : "");
 
         const control = buildControl(entry, key);
 
@@ -113,7 +164,7 @@ export function createForm(api) {
                 for (const option of entry.options || []) {
                     const optionEl = document.createElement("option");
                     optionEl.value = option;
-                    optionEl.textContent = option;
+                    optionEl.textContent = t(`option.${option}`, option);
                     if (option === current) {
                         optionEl.selected = true;
                     }
@@ -209,6 +260,11 @@ export function createForm(api) {
             }
             formValues[entry.uniqueID] = entry.value;
         }
+        // 壳专属行回落到当前卡片 state（新预设 = 跟随现状，而非凭空默认）。
+        if ("shellCombinedEnabled" in formValues) {
+            formValues.shellCombinedEnabled = state.combinedModeEnabled === true;
+            formValues.shellCombinedModules = [...state.combinedModeModules].join(", ");
+        }
         syncFormControls();
     }
 
@@ -246,9 +302,25 @@ export function createForm(api) {
     function collectCheckedSnapshot() {
         const snapshot = {};
         for (const [key, included] of Object.entries(formIncluded)) {
-            if (included && key in formValues) {
-                snapshot[key] = formValues[key];
+            if (!included || !(key in formValues) || SHELL_FORM_KEYS.has(key)) {
+                continue;
             }
+            snapshot[key] = formValues[key];
+        }
+        // 壳专属两行合并为一个 combinedMode 对象；未勾选的字段回落当前卡片
+        // state。只在壳内可能发生（浏览器根本不渲染这两行）。
+        if (formIncluded.shellCombinedEnabled || formIncluded.shellCombinedModules) {
+            snapshot.combinedMode = {
+                enabled: formIncluded.shellCombinedEnabled
+                    ? formValues.shellCombinedEnabled === true
+                    : state.combinedModeEnabled === true,
+                modules: formIncluded.shellCombinedModules
+                    ? parseCombinedModeModuleList(formValues.shellCombinedModules)
+                    : [...state.combinedModeModules],
+            };
+        }
+        if (formIncluded.shellLaneAccSpaceMode) {
+            snapshot.laneAccSpaceMode = formValues.shellLaneAccSpaceMode;
         }
         return snapshot;
     }

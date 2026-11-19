@@ -3,18 +3,22 @@ export const APP_CONFIG = {
     socketHost: "localhost:24050",
 
     options: {
-        contentBar: ["None", "Auto", "Pattern", "Etterna", "Graph", "ReworkPP", "Full"],
+        contentBar: ["None", "Auto", "Pattern", "Etterna", "Graph", "ReworkPP", "LaneAcc"],
         srText: ["Auto", "ReworkSR", "MSD", "Pattern", "InterludeSR", "ReworkPP"],
         diffText: ["None", "Graph", "Difficulty", "MSD", "Pattern", "ReworkSR", "InterludeSR"],
-        estimatorAlgorithm: ["Azusa", "Roxy", "Mixed", "Sunny", "Daniel", "Companella", "SunnyWindow"],
-        etternaVersion: ["0.68.0-Unofficial", "0.70.0", "0.72.0", "0.72.3", "0.74.0"],
-        companellaEtternaVersion: ["0.68.0-Unofficial", "0.70.0", "0.72.0", "0.72.3", "0.74.0"],
+        estimatorAlgorithm: ["Azusa", "Roxy", "Mixed", "Sunny", "Polaris", "Daniel", "Companella", "XDC1", "Proj7k"],
+        etternaVersion: ["0.68.0-Unofficial", "0.70.0", "0.72.0", "0.72.3", "0.74.0", "0.75.0"],
+        companellaEtternaVersion: ["0.68.0-Unofficial", "0.70.0", "0.72.0", "0.72.3", "0.74.0", "0.75.0"],
         cardOpacity: ["100%", "95%", "90%", "80%", "70%"],
         cardRadius: ["Small", "Medium", "Large"],
         cardBgBlur: ["Off", "4px", "8px", "12px", "16px", "20px"],
         reverseCardExtendDirection: [true, false],
         modeTag: ["RC", "LN", "HB", "Mix", "SV"],
     },
+
+    // vibro 关键词直判：谱面元数据（标题或难度名）包含其中任一关键词即判定为 vibro，
+    // 大小写不敏感。判定实现见 js/patterns/chartVibro.js 的 detectVibroFromMetadata。
+    vibroKeywords: ["vibro"],
 
     starStops: {
         background: [
@@ -70,7 +74,7 @@ export const APP_CONFIG = {
         socketRecalcLazyDelayMs: 200,
         settingsCommandTimeoutMs: 1500,
         pauseDetectEpsilonMs: 0,
-        pauseDetectionThresholdMs: 500,
+        pauseFallbackThresholdMs: 500,
     },
 
     defaults: {
@@ -82,7 +86,6 @@ export const APP_CONFIG = {
         etternaVersion: "0.72.3",
         companellaEtternaVersion: "0.74.0",
         pauseDetectionEnabled: true,
-        pauseDetectionThresholdMs: 500,
         enableEtternaRainbowBars: false,
         enableStatusMarquee: true,
         vibroDetection: true,
@@ -113,17 +116,55 @@ export const APP_CONFIG = {
         enableAnalyzeLN: false,
         enableAlwaysShowLNDifficulty: false,
         enableTelemetry: true,
+        enableDifficultyFeedback: true,
+        gameClient: "Auto",
     },
 
     mods: {
-        knownCodes: ["DA", "NC", "DT", "HT", "HR", "EZ", "DC", "IN", "HO", "MR", "CL", "SV2"],
+        // 全量 mania 码表：页面 gate 需要识别所有会改变判定/键型/可视的 mod，
+        // 不再只认缓存键用到的那 12 个。顺序与 `desktop/src/osu/keys.rs`
+        // 的 `KNOWN_MOD_CODES` 逐项一致（排序规则：长度降序，同长保持此顺序）。
+        knownCodes: [
+            "NF", "EZ", "TD", "HD", "HR", "SD", "DT", "RX", "HT", "NC",
+            "FL", "AT", "SO", "AP", "PF", "FI", "RD", "CN", "TG", "MR",
+            "DA", "CL", "IN", "HO", "DC", "NR", "CS", "BL", "CO", "ST",
+            "AC", "TC", "BR", "DF", "AD", "MU", "NS", "MG", "RP", "FR",
+            "BU", "SY", "DP", "BM", "AL", "SG", "SW", "GR", "WG", "SI",
+            "TR", "DS", "WU", "WD", "AS", "SV2", "4K", "5K", "6K", "7K",
+            "8K", "9K", "10K", "1K", "2K", "3K",
+        ],
         bitFlags: {
+            NF: 1,
             EZ: 2,
+            TD: 4,
+            HD: 8,
             HR: 16,
+            SD: 32,
             DT: 64,
+            RX: 128,
             HT: 256,
             NC: 512,
+            FL: 1024,
+            AT: 2048,
+            SO: 4096,
+            AP: 8192,
+            PF: 16384,
+            "4K": 32768,
+            "5K": 65536,
+            "6K": 131072,
+            "7K": 262144,
+            "8K": 524288,
+            FI: 1048576,
+            RD: 2097152,
+            CN: 4194304,
+            TG: 8388608,
+            "9K": 16777216,
+            "10K": 33554432,
+            "1K": 67108864,
+            "2K": 134217728,
+            "3K": 268435456,
             SV2: 536870912,
+            MR: 1073741824,
         },
     },
 };

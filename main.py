@@ -39,13 +39,13 @@ MA_REQUEST_RE = re.compile(
 HELP_TEXT = "\n".join(
     [
         "osu!mania 谱面分析",
-        "基于 osumania_map_analyser（2.0.0） 实现本项目，可以分析键型/SV，并预估对应 rf/ln 段位。",
+        "基于 osumania_map_analyser（3.0.2） 实现本项目，可以分析键型/SV，并预估对应 rf/ln 段位。",
         "",
         "用法",
         "/ma <bid>      默认等同于 /ma -a <bid>",
         "/ma -n <bid>   主体不显示任何内容，即短卡片模式",
         "/ma -a <bid>   主体内容按谱面 LN 占比自动选择 Pattern 或 Etterna",
-        "/ma -p <bid>   主体显示键型分析，非4/6/7K 主体自动回退 Pattern",
+        "/ma -p <bid>   主体显示 Pattern 键型分析",
         "/ma -e <bid>   主体显示 Etterna 7 大键型分",
         "/ma -g <bid>   主体显示难度变化图，命令简写/mag",
         "/ma help       显示本帮助文本",
@@ -61,7 +61,7 @@ HELP_TEXT = "\n".join(
     "astrbot_plugin_osu_mania_map_analyser",
     "xuan_yuan",
     "Render osumania_map_analyser charts from beatmap id via Playwright.",
-    "0.2.1",
+    "0.2.2",
 )
 class ManiaMapAnalyserPlugin(Star):
     """AstrBot 插件入口"""

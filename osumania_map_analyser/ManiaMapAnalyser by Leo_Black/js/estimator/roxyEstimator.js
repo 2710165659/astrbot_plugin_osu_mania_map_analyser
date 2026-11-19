@@ -1,16 +1,26 @@
+import {
+    clamp,
+    safeDiv,
+    fmt4,
+    piecewiseLinear,
+    quantileFromSorted,
+    powerMean,
+    topTailMean,
+} from "./estimatorMath.js";
 import { OsuFileParser } from "../parser/osuFileParser.js";
 import { runAzusaEstimatorFromText } from "./azusaEstimator.js";
 import { runDanielEstimatorFromText } from "./danielEstimator.js";
 import { evaluateRoxyMetaModel, ROXY_META_FEATURE_NAMES } from "./roxyMetaModel.generated.js";
 import { numericToRcLabel, rcLabelToNumeric } from "./rcDifficultyFormat.js";
 import { runSunnyEstimatorFromText } from "./sunnyEstimator.js";
+import { computeMarathonCorrection } from "./marathonCorrection.js";
 
 const ROXY_CONFIG = Object.freeze({
     rcLnRatioLimit: 0.18,
     minNotes: 80,
     rowToleranceMs: 2,
     entropyWindowMs: 750,
-    npsWindowsMs: Object.freeze([250, 500, 1000, 4000]),
+    npsWindowsMs: Object.freeze([1000, 4000]),
     sectionMs: 400,
     sectionDecay: 0.9,
     sectionEmaAlpha: 0.15,
@@ -136,22 +146,16 @@ function buildScopeResult(label, code, structuralNumeric, rawNumeric, extras) {
             structuralNumeric: fmt4(structuralNumeric),
             notes: extras.notes ?? null,
             rows: extras.rows ?? null,
+            ...(extras.referenceDanielResult ? { referenceDanielResult: extras.referenceDanielResult } : {}),
         },
     };
 }
 
-function clamp(value, min, max) {
-    return Math.max(min, Math.min(max, value));
-}
 
-function safeDiv(a, b, fallback = 0) {
-    if (!Number.isFinite(a) || !Number.isFinite(b) || Math.abs(b) < 1e-9) return fallback;
-    return a / b;
-}
 
-function fmt4(value) {
-    return Number.isFinite(value) ? Number(value.toFixed(4)) : null;
-}
+
+
+
 
 function numericToRoxyRcLabel(numeric) {
     const value = Number(numeric);
@@ -245,60 +249,24 @@ function decayState(state, input, dt, tau) {
     return state * decay + input;
 }
 
-function piecewiseLinear(x, knots) {
-    const value = Number(x);
-    if (!Number.isFinite(value) || !Array.isArray(knots) || knots.length === 0) return value;
-    if (value <= knots[0][0]) return knots[0][1];
-    const last = knots.length - 1;
-    if (value >= knots[last][0]) return knots[last][1];
 
-    for (let i = 0; i < last; i += 1) {
-        const [x0, y0] = knots[i];
-        const [x1, y1] = knots[i + 1];
-        if (value >= x0 && value <= x1) {
-            return y0 + safeDiv((value - x0) * (y1 - y0), x1 - x0, 0);
-        }
-    }
-
-    return value;
-}
 
 function linearMap(value, x0, x1, y0, y1) {
     return y0 + safeDiv((value - x0) * (y1 - y0), x1 - x0, 0);
 }
 
-function quantileFromSorted(sortedValues, q) {
-    if (!sortedValues.length) return 0;
-    const t = clamp(Number(q), 0, 1) * (sortedValues.length - 1);
-    const left = Math.floor(t);
-    const right = Math.min(sortedValues.length - 1, left + 1);
-    const w = t - left;
-    return sortedValues[left] * (1 - w) + sortedValues[right] * w;
-}
+
 
 function quantile(values, q) {
-    const sorted = values.filter((item) => Number.isFinite(item)).sort((a, b) => a - b);
+    const sorted = values.filter((item) => Number.isFinite(item));
+    if (sorted instanceof Float64Array) sorted.sort();
+    else sorted.sort((a, b) => a - b);
     return quantileFromSorted(sorted, q);
 }
 
-function powerMean(values, p) {
-    if (!values.length) return 0;
-    let acc = 0;
-    for (const value of values) {
-        acc += Math.pow(Math.max(0, value), p);
-    }
-    return Math.pow(acc / values.length, 1 / p);
-}
 
-function topTailMean(sortedValues, ratio) {
-    if (!sortedValues.length) return 0;
-    const count = Math.max(1, Math.ceil(sortedValues.length * ratio));
-    let sum = 0;
-    for (let i = sortedValues.length - count; i < sortedValues.length; i += 1) {
-        sum += sortedValues[i];
-    }
-    return sum / count;
-}
+
+
 
 function bitCount4(mask) {
     let value = mask & 15;
@@ -458,8 +426,32 @@ function canonicalizeOsuTiming(osuText, speedRate) {
     };
 }
 
-function buildTapRows(parsed, speedRate, toleranceMs) {
-    const taps = [];
+/**
+ * canonicalizeOsuTiming 把分析文本的时间轴整体平移成"首个物件 = ROXY_CANONICAL_FIRST_OBJECT_MS"。
+ * 估算只看相对结构，平移不影响星数；但 graph 是逐点按谱面时间绘制的，必须还原到调用方
+ * 传入的原始谱面时间轴（与 Sunny/Daniel/Azusa 同口径）。
+ * 否则图表 x 轴窗口与进度线都按被平移过的时间轴映射：前奏越长偏得越多，当前奏长于
+ * 可玩段时 songStartMs 会超过被压缩后的 maxTime，游标被钉死在最右侧且整首歌不动。
+ */
+function restoreGraphTimeline(graph, timing, speedRate) {
+    if (!graph || timing?.applied !== true || !Array.isArray(graph.times)) {
+        return graph;
+    }
+
+    // 逆变换：canonical = raw / rate - firstObject / rate + CANONICAL_FIRST_OBJECT_MS
+    const offset = Number(timing.firstTime) / speedRate - ROXY_CANONICAL_FIRST_OBJECT_MS;
+    if (!Number.isFinite(offset) || offset === 0) {
+        return graph;
+    }
+
+    const { times } = graph;
+    for (let i = 0; i < times.length; i += 1) {
+        times[i] += offset;
+    }
+    return graph;
+}
+
+function buildTapRows(parsed, speedRate, toleranceMs) {    const taps = [];
     const columns = Array.isArray(parsed.columns) ? parsed.columns : [];
     const starts = Array.isArray(parsed.noteStarts) ? parsed.noteStarts : [];
     const types = Array.isArray(parsed.noteTypes) ? parsed.noteTypes : [];
@@ -559,20 +551,25 @@ function computeNpsRows(rows, tapTimes) {
             end += 1;
         }
 
-        row.nps = {};
+        // 只保留下游实际消费的两个窗口（1000 / 4000ms）；避免每行分配 nps 对象。
         for (let w = 0; w < windows.length; w += 1) {
             const windowMs = windows[w];
             const minTime = row.t - windowMs;
             while (starts[w] < tapTimes.length && tapTimes[starts[w]] <= minTime) {
                 starts[w] += 1;
             }
-            row.nps[windowMs] = (end - starts[w]) / (windowMs / 1000);
+            const value = (end - starts[w]) / (windowMs / 1000);
+            if (windowMs === 1000) row.nps1000 = value;
+            else row.nps4000 = value;
         }
     }
 }
 
 function summarizeStream(values) {
-    const sorted = values.filter((value) => Number.isFinite(value)).sort((a, b) => a - b);
+    const sorted = values.filter((value) => Number.isFinite(value));
+    // Streams are Float64Array rows; native typed-array sort is numeric ascending.
+    if (sorted instanceof Float64Array) sorted.sort();
+    else sorted.sort((a, b) => a - b);
     if (!sorted.length) {
         return {
             q50: 0,
@@ -641,7 +638,7 @@ function computeRoxyCurve(rows, taps, activity) {
     const streams = {};
     const states = {};
     for (const name of STREAM_NAMES) {
-        streams[name] = [];
+        streams[name] = new Float64Array(rows.length);
         states[name] = { burst: 0, stamina: 0 };
     }
 
@@ -650,13 +647,17 @@ function computeRoxyCurve(rows, taps, activity) {
     const prevHandMask = new Array(2).fill(0);
     const handStamina = new Array(2).fill(0);
     const columnCounts = new Array(4).fill(0);
-    const dtSameValues = [];
-    const dtHandValues = [];
-    const localRaw = [];
+    const dtHandValues = new Float64Array(rows.length * 2);
+    let dtSameCount = 0;
+    let dtHandCount = 0;
+    const localRaw = new Float64Array(rows.length);
 
     const maskCounts = new Int32Array(16);
     const transitionCounts = new Int32Array(256);
-    const entropyQueue = [];
+    const entropyTimes = new Float64Array(rows.length);
+    const entropyMasks = new Int32Array(rows.length);
+    const entropyCodes = new Int32Array(rows.length);
+    let entropyCount = 0;
     let entropyBack = 0;
     let maskTotal = 0;
     let transitionTotal = 0;
@@ -690,7 +691,8 @@ function computeRoxyCurve(rows, taps, activity) {
             if (handMasks[h] === 0) continue;
             if (Number.isFinite(lastHandTime[h])) {
                 dtHand[h] = Math.max(1, row.t - lastHandTime[h]);
-                dtHandValues.push(dtHand[h]);
+                dtHandValues[dtHandCount] = dtHand[h];
+                dtHandCount += 1;
                 eligibleHandEvents += 1;
                 if ((handMasks[h] & prevHandMask[h]) === 0 && prevHandMask[h] !== 0) {
                     rotation[h] = 1;
@@ -713,7 +715,7 @@ function computeRoxyCurve(rows, taps, activity) {
             columnCounts[c] += 1;
             if (Number.isFinite(lastColumnTime[c])) {
                 dtSame[c] = Math.max(1, row.t - lastColumnTime[c]);
-                dtSameValues.push(dtSame[c]);
+                dtSameCount += 1;
                 anchorRow = Math.max(anchorRow, inverseGate(dtSame[c], 220, 260));
                 fastJackStrengthSum += inverseGate(dtSame[c], 120, 150);
                 jackMax = Math.max(jackMax, strainRate(dtSame[c], 185, 35, 1.18));
@@ -734,13 +736,15 @@ function computeRoxyCurve(rows, taps, activity) {
             transitionCounts[transitionCode] += 1;
             transitionTotal += 1;
         }
-        entropyQueue.push({ t: row.t, mask: row.mask, transitionCode });
-        while (entropyBack < entropyQueue.length && entropyQueue[entropyBack].t < row.t - ROXY_CONFIG.entropyWindowMs) {
-            const old = entropyQueue[entropyBack];
-            maskCounts[old.mask] -= 1;
+        entropyTimes[entropyCount] = row.t;
+        entropyMasks[entropyCount] = row.mask;
+        entropyCodes[entropyCount] = transitionCode;
+        entropyCount += 1;
+        while (entropyBack < entropyCount && entropyTimes[entropyBack] < row.t - ROXY_CONFIG.entropyWindowMs) {
+            maskCounts[entropyMasks[entropyBack]] -= 1;
             maskTotal -= 1;
-            if (old.transitionCode >= 0) {
-                transitionCounts[old.transitionCode] -= 1;
+            if (entropyCodes[entropyBack] >= 0) {
+                transitionCounts[entropyCodes[entropyBack]] -= 1;
                 transitionTotal -= 1;
             }
             entropyBack += 1;
@@ -791,8 +795,8 @@ function computeRoxyCurve(rows, taps, activity) {
             + (0.24 * transitionEntropy750)
             + (0.20 * (row.mask !== prevMask ? 1 : 0));
         const maxHandStamina = Math.max(handStamina[0], handStamina[1]);
-        const staminaIn = (0.40 * Math.log1p(row.nps[1000] || 0) / Math.log(24))
-            + (0.35 * Math.log1p(row.nps[4000] || 0) / Math.log(24))
+        const staminaIn = (0.40 * Math.log1p(row.nps1000 || 0) / Math.log(24))
+            + (0.35 * Math.log1p(row.nps4000 || 0) / Math.log(24))
             + (0.25 * maxHandStamina);
         const courseIn = staminaIn
             * gate(activity.activeDurationSec, 90, 300)
@@ -816,24 +820,14 @@ function computeRoxyCurve(rows, taps, activity) {
             state.stamina = decayState(state.stamina, input, dtRow, streamConfig.staminaTau);
             const value = streamConfig.burstMix * state.burst
                 + (1 - streamConfig.burstMix) * state.stamina;
-            streams[name].push(value);
+            streams[name][i] = value;
         }
 
         let raw = 0;
         for (const name of STREAM_NAMES) {
-            raw += ROXY_CONFIG.streamWeights[name] * streams[name][streams[name].length - 1];
+            raw += ROXY_CONFIG.streamWeights[name] * streams[name][i];
         }
-        localRaw.push(raw);
-
-        row.metrics = {
-            rowChord,
-            sameHandOverlap,
-            rotation,
-            entropy750,
-            transitionEntropy750,
-            anchorRow,
-            localRaw: raw,
-        };
+        localRaw[i] = raw;
 
         for (let c = 0; c < 4; c += 1) {
             if ((row.mask & (1 << c)) !== 0) {
@@ -864,7 +858,7 @@ function computeRoxyCurve(rows, taps, activity) {
     const q97Local = quantile(localRaw, 0.97);
     const q75Local = quantile(localRaw, 0.75);
     const peakToSustainGap = clamp(safeDiv(q97Local - q75Local, Math.max(q97Local, 1e-6), 0), 0, 1);
-    const finiteSameCount = dtSameValues.length;
+    const finiteSameCount = dtSameCount;
     const maxColumnCount = Math.max(...columnCounts);
     const minColumnCount = Math.min(...columnCounts);
 
@@ -874,7 +868,7 @@ function computeRoxyCurve(rows, taps, activity) {
         threeRate: threeRows / Math.max(rows.length, 1),
         overlapRate: overlapSum / Math.max(rows.length, 1),
         rotationRate: rotationSum / Math.max(eligibleHandEvents, 1),
-        sameHandQ10: quantile(dtHandValues, 0.10),
+        sameHandQ10: quantile(dtHandValues.subarray(0, dtHandCount), 0.10),
         fastJackRate: fastJackStrengthSum / Math.max(finiteSameCount, 1),
         anchorRate: anchorRowStrengthSum / Math.max(rows.length, 1),
         anchorImbalance: (maxColumnCount - minColumnCount) / Math.max(taps.length, 1),
@@ -1112,6 +1106,26 @@ function resultNumeric(result) {
     return rcLabelToNumeric(result?.estDiff);
 }
 
+// Compact Daniel result for reuse by Mixed's subsequent Azusa pass. Roxy
+// always computes Daniel for its meta (pred_Daniel + internal Azusa blend);
+// exposing the compact result lets Mixed avoid recomputing the same Daniel
+// when Roxy scopes out into the Azusa branch. Keep only the fields Azusa's
+// estimateDanielNumeric/hasDanielNativeNumeric read.
+function compactDanielResult(result) {
+    if (!result) return null;
+    const numeric = result.numericDifficulty;
+    const star = Number(result.star);
+    if (!Number.isFinite(Number(numeric)) && !Number.isFinite(star)) return null;
+    return {
+        star: Number.isFinite(star) ? star : Number.NaN,
+        lnRatio: Number(result.lnRatio),
+        columnCount: Number(result.columnCount),
+        estDiff: result.estDiff,
+        numericDifficulty: numeric,
+        numericDifficultyHint: result.numericDifficultyHint ?? null,
+    };
+}
+
 function safeReference(run) {
     try {
         const result = run();
@@ -1164,11 +1178,23 @@ function stabilizeHighReferencePredictions(predictions, structuralNumeric) {
     return stabilized;
 }
 
-function buildReferencePredictions(osuText, options, structuralNumeric) {
+function buildReferencePredictions(osuText, options, structuralNumeric, parsed = null) {
     const wantsGraph = options?.withGraph === true;
     const referenceOptions = {
         ...options,
         withGraph: false,
+    };
+
+    // 三个参照估计器共享同一份已解析谱面：Sunny/Daniel 只读，Azusa 只读；
+    // Sunny 的 IN/HO 转换在 calculateSunny 内部克隆 parser，不会污染共享实例。
+    // 只有真正需要重新解析时才构造（precomputed 结果可跳过对应解析）。
+    let referenceParser = parsed;
+    const ensureReferenceParser = () => {
+        if (referenceParser == null) {
+            referenceParser = new OsuFileParser(osuText);
+            referenceParser.process();
+        }
+        return referenceParser;
     };
 
     const precomputedSunnyResult = options?.precomputedSunnyResult || null;
@@ -1178,14 +1204,14 @@ function buildReferencePredictions(osuText, options, structuralNumeric) {
         : safeReference(() => runSunnyEstimatorFromText(osuText, {
             ...referenceOptions,
             withGraph: wantsGraph,
-        }));
-    const danielResult = precomputedDanielResult || safeReference(() => runDanielEstimatorFromText(osuText, referenceOptions));
+        }, ensureReferenceParser()));
+    const danielResult = precomputedDanielResult || safeReference(() => runDanielEstimatorFromText(osuText, referenceOptions, ensureReferenceParser()));
     const azusaResult = safeReference(() => runAzusaEstimatorFromText(osuText, {
         ...referenceOptions,
         withGraph: wantsGraph,
         precomputedSunnyResult: sunnyResult,
         precomputedDanielResult: danielResult,
-    }));
+    }, ensureReferenceParser()));
     const predictions = stabilizeHighReferencePredictions({
         Azusa: resultNumeric(azusaResult),
         Sunny: resultNumeric(sunnyResult),
@@ -1199,6 +1225,9 @@ function buildReferencePredictions(osuText, options, structuralNumeric) {
     return {
         predictions,
         graph: wantsGraph ? (azusaResult?.graph || null) : null,
+        danielResult: options?.includeReferenceResults === true
+            ? compactDanielResult(danielResult)
+            : undefined,
     };
 }
 
@@ -1334,8 +1363,8 @@ function buildRoxyMetaFeatures(referencePredictions, numericDetails, curve, stru
     return ROXY_META_FEATURE_NAMES.map((name) => toFeatureNumber(map[name]));
 }
 
-function computeRoxyMetaNumeric(osuText, options, numericDetails, curve, structuralNumeric) {
-    const referenceDetails = buildReferencePredictions(osuText, options, structuralNumeric);
+function computeRoxyMetaNumeric(osuText, options, numericDetails, curve, structuralNumeric, parsed = null) {
+    const referenceDetails = buildReferencePredictions(osuText, options, structuralNumeric, parsed);
     const referencePredictions = referenceDetails.predictions;
     const features = buildRoxyMetaFeatures(referencePredictions, numericDetails, curve, structuralNumeric);
     const metaNumeric = evaluateRoxyMetaModel(features);
@@ -1344,6 +1373,7 @@ function computeRoxyMetaNumeric(osuText, options, numericDetails, curve, structu
         metaNumeric,
         referencePredictions,
         graph: referenceDetails.graph,
+        referenceDanielResult: referenceDetails.danielResult,
     };
 }
 
@@ -1519,9 +1549,25 @@ export function runRoxyEstimatorFromText(osuText, options = {}, parsed = null) {
         const metaOptions = {
             ...effectiveOptions,
             odFlag: ROXY_OD_NEUTRAL,
-            precomputedSunnyResult: null,
+            // Perf: when the caller's Sunny is already at the neutral OD and no
+            // graph is needed, it is the same numeric input Roxy would compute
+            // internally (canonical timing shift is the only difference). Reuse
+            // it and let the internal Azusa blend consume it. withGraph=true is
+            // excluded because the graph timeline is canonicalized inside Roxy.
+            precomputedSunnyResult: (options?.precomputedSunnyResult
+                && options.withGraph !== true
+                && options.classicMod !== true
+                && speedRate === 1
+                && !/IN|HO/i.test(String(options.cvtFlag ?? ""))
+                && odDetails.effective === ROXY_OD_NEUTRAL)
+                ? options.precomputedSunnyResult
+                : null,
         };
-        const metaDetails = computeRoxyMetaNumeric(analysisText, metaOptions, numericDetails, curve, structuralNumeric);
+        // 参照链共享解析：Roxy 自己从 analysisText 新建且未做 IN/HO 转换的
+        // parser 可直接复用；否则 buildReferencePredictions 会惰性解析一次。
+        const referenceParser = (!canShareParsed && cvt == null) ? parser : null;
+        const metaDetails = computeRoxyMetaNumeric(analysisText, metaOptions, numericDetails, curve, structuralNumeric, referenceParser);
+        const referenceDanielResult = metaDetails.referenceDanielResult ?? null;
         const metaNumeric = Number(metaDetails.metaNumeric);
         let baseUnguardedNumeric = Number.isFinite(metaNumeric) ? metaNumeric : structuralNumeric;
         const structuralBackstopStrength = Number.isFinite(structuralNumeric)
@@ -1563,10 +1609,26 @@ export function runRoxyEstimatorFromText(osuText, options = {}, parsed = null) {
             ? computeAzusaHighGapLift(metaDetails.referencePredictions, unguardedNumeric)
             : 0;
         unguardedNumeric = clamp(unguardedNumeric + azusaHighGapLift, -2, ROXY_NUMERIC_OUTPUT_MAX);
-        const finalNumeric = computeAzusaFusion(
+        let finalNumeric = computeAzusaFusion(
             metaDetails.referencePredictions,
             Number(unguardedNumeric.toFixed(2)),
         );
+
+        // 马拉松时长修正（估算器内部应用）：options.marathonCorrection 注入
+        // { durationS, ettValues }（缺省/无 MSD 时不触发），只降不升、对数饱和 + numeric taper；
+        // 修正先于 scope 判定执行（贴边图修正后落入 BelowScope 由 Mixed 路由同样成立）。
+        // 参数与机制见 docs/features/marathon-correction.md。
+        const mc = options.marathonCorrection;
+        if (mc && Number.isFinite(Number(mc.durationS))) {
+            const corr = computeMarathonCorrection({
+                durationS: mc.durationS,
+                ettValues: mc.ettValues ?? null,
+                numeric: finalNumeric,
+            });
+            if (corr > 0) {
+                finalNumeric = finalNumeric - corr;
+            }
+        }
 
         // 高难聚焦：低难（< Alpha）与超高难（>= Zeta high）不输出有效 numeric，
         // 返回段位标签 + numeric null，由 Mixed 路由到 Azusa（低难）。
@@ -1576,6 +1638,7 @@ export function runRoxyEstimatorFromText(osuText, options = {}, parsed = null) {
                 columnCount,
                 notes: taps.length,
                 rows: rows.length,
+                referenceDanielResult,
             });
         }
         if (finalNumeric >= ROXY_SCOPE_MAX) {
@@ -1584,6 +1647,7 @@ export function runRoxyEstimatorFromText(osuText, options = {}, parsed = null) {
                 columnCount,
                 notes: taps.length,
                 rows: rows.length,
+                referenceDanielResult,
             });
         }
 
@@ -1596,7 +1660,9 @@ export function runRoxyEstimatorFromText(osuText, options = {}, parsed = null) {
             estDiff,
             numericDifficulty: finalNumeric,
             numericDifficultyHint: "roxy-meta-ridge-v3",
-            graph: options.withGraph === true ? (metaDetails.graph || null) : null,
+            graph: options.withGraph === true
+                ? restoreGraphTimeline(metaDetails.graph, timing, speedRate)
+                : null,
             rawNumericDifficulty: Number(numericDetails.rawNumeric.toFixed(4)),
             debug: {
                 notes: taps.length,
@@ -1641,6 +1707,7 @@ export function runRoxyEstimatorFromText(osuText, options = {}, parsed = null) {
                 meta: {
                     featureCount: ROXY_META_FEATURE_NAMES.length,
                     references: Object.fromEntries(Object.entries(metaDetails.referencePredictions).map(([key, value]) => [key, fmt4(value)])),
+                    ...(referenceDanielResult ? { referenceDanielResult } : {}),
                 },
                 stats: Object.fromEntries(Object.entries(curve.stats).map(([key, value]) => (
                     [key, Array.isArray(value) ? value : fmt4(value)]

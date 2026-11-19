@@ -7,9 +7,15 @@
 import {
     SETTING_RECOMPUTE_KEYS,
     SETTING_CACHE_KEYS,
-} from "../settings.js";
-import { clearResultCache } from "../resultCache.js";
-import { scheduleRecompute } from "../scheduler.js";
+} from "../core/settings.js";
+import { applyCombinedModeSetting, applyLaneAccSpaceMode } from "../core/settings.js";
+import { normalizeSpaceMode } from "../../laneAcc/accumulator.js";
+import { normalizeCombinedMode } from "../ui/combinedMode.js";
+import { state } from "../core/appContext.js";
+import { isShellRuntime } from "../feedback/feedbackSpec.js";
+import { postShellConfigPatch } from "../net/shellConfigClient.js";
+import { clearResultCache } from "../core/resultCache.js";
+import { scheduleRecompute } from "../core/scheduler.js";
 import {
     SYSTEM_SNAPSHOT_KEYS,
 } from "./storage.js";
@@ -69,12 +75,24 @@ export function hasKeyChanged(prev, next, key) {
 // Full snapshot capture / apply
 // ---------------------------------------------------------------------------
 
-/** Captures the currently applied user settings as a full snapshot. */
+/**
+ * Captures the currently applied user settings as a full snapshot.
+ * In a desktop-shell window the shell-only combinedMode rides along
+ * (state holds the real values there); a browser page never captures it —
+ * its state is always the untouched default.
+ */
 export async function captureCurrentSettings() {
     const { keys } = await loadSettingsSchema();
     const snapshot = {};
     for (const key of keys) {
         snapshot[key] = getterFor(key)();
+    }
+    if (isShellRuntime()) {
+        snapshot.combinedMode = {
+            enabled: state.combinedModeEnabled === true,
+            modules: [...state.combinedModeModules],
+        };
+        snapshot.laneAccSpaceMode = state.laneAccSpaceMode || "independent";
     }
     return snapshot;
 }
@@ -87,8 +105,18 @@ export async function captureCurrentSettings() {
  * elements that do not exist on the manager page (presets.html) — a failure
  * must never abort the rest of the snapshot. State changes made before the
  * failure still count (the write-back + broadcast re-render on the overlay).
+ *
+ * @param {object} snapshot key -> value
+ * @param {object} [options]
+ * @param {boolean} [options.quiet] report per-key failures with console.debug
+ *        instead of console.error. The desktop settings page (settings.html)
+ *        has no overlay DOM by design, so those failures are expected there and
+ *        an error per key would make a healthy page look broken. Nothing is
+ *        swallowed: the message and the error object are still logged, the loop
+ *        still continues per key, and every existing caller keeps the loud
+ *        default (a failure is a real defect wherever the card exists).
  */
-export async function applySnapshot(snapshot) {
+export async function applySnapshot(snapshot, { quiet = false } = {}) {
     const { appliers } = await loadSettingsSchema();
     let recomputeNeeded = false;
     let cacheNeeded = false;
@@ -99,6 +127,30 @@ export async function applySnapshot(snapshot) {
         if (key === "wsEndpoint") {
             continue;
         }
+        // Shell-only key: apply to the card at runtime (a browser page forces
+        // enabled=false inside applyCombinedModeSetting, i.e. a safe no-op) and
+        // persist to mma-shell-config.json from a shell window. It manages its
+        // own recompute; never part of the recompute/cache invalidation sets.
+        // 与下方 per-key try/catch 同语义：管理页（presets.html）没有卡片 DOM，
+        // applyCombinedModeSetting 内部的可见性更新会抛错——落盘不受影响。
+        if (key === "laneAccSpaceMode" || key === "handAccSpaceMode") {
+            try {
+                applyLaneAccSpaceMode(value);
+            } catch (error) {
+                console.debug('[presets] apply "laneAccSpaceMode" failed (DOM may be missing on this page):', error);
+            }
+            postShellConfigPatch({ laneAccSpaceMode: normalizeSpaceMode(value) });
+            continue;
+        }
+        if (key === "combinedMode") {
+            try {
+                applyCombinedModeSetting(value);
+            } catch (error) {
+                console.debug('[presets] apply "combinedMode" failed (DOM may be missing on this page):', error);
+            }
+            postShellConfigPatch({ combinedMode: normalizeCombinedMode(value) });
+            continue;
+        }
         const applier = appliers.get(key);
         if (!applier) {
             continue;
@@ -107,7 +159,12 @@ export async function applySnapshot(snapshot) {
         try {
             changed = applier(value) === true;
         } catch (error) {
-            console.error(`[presets] apply "${key}" failed (DOM may be missing on this page):`, error);
+            const message = `[presets] apply "${key}" failed (DOM may be missing on this page):`;
+            if (quiet) {
+                console.debug(message, error);
+            } else {
+                console.error(message, error);
+            }
             // The state may already have been updated — treat as changed so
             // recompute/cache invalidation still fire when needed.
             changed = true;

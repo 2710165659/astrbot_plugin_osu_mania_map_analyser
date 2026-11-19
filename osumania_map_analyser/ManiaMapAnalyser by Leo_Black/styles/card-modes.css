@@ -3,45 +3,72 @@
     grid-template-rows: auto auto 1fr;
     gap: 8px;
     width: 475px;
-    height: 540px;
+    height: auto;
     min-width: 475px;
     max-width: 475px;
     min-height: 540px;
-    max-height: 540px;
+    max-height: none;
     overflow: hidden;
 }
 
-/* Full mode: show Pattern + Etterna + Graph stacked together.
+/* Combined mode: show Pattern + Etterna + Graph stacked together.
    Height grows to fit all three blocks; nothing is compressed or scrolled. */
-.main-card.bars-full {
+.main-card.bars-combined {
     grid-template-rows: none;
     grid-auto-rows: auto;
     align-content: start;
+    align-self: start;
     gap: 10px;
     height: auto;
     min-height: 540px;
     max-height: none;
     overflow: visible;
+    /* 给底部的 Mix/Pause 绝对定位胶囊预留真实布局空间；否则最后一个
+       模块（ReworkPP/Graph/LaneAcc）会压到它们上面。 */
+    padding-bottom: 38px;
 }
 
-.main-card.bars-full .cluster-bars,
-.main-card.bars-full .ett-skill-bars {
+.main-card.bars-combined .cluster-bars,
+.main-card.bars-combined .ett-skill-bars {
     overflow-x: hidden;
     overflow-y: visible;
     max-height: none;
+    margin-bottom: 38px;
 }
 
-.main-card.bars-full .body-graph-wrap {
+.main-card.bars-combined .pp-bars {
+    margin-bottom: 38px;
+}
+
+.main-card.bars-combined .body-graph-wrap {
     width: 100%;
-    margin: 0 auto 28px;
+    margin: 0 auto 38px;
 }
 
-/* Full mode section separators — hr-like with centered text */
-.full-separator {
+/* LaneAcc 在组合模式里沿用单模块舞台高度，避免 stage 被 grid 行按
+   min-height:72px 压扁，导致轨道条像贴底的一小条。 */
+.main-card.bars-combined .laneacc-wrap {
+    flex: 0 0 auto;
+    /* summary 38 + gap 6 + stage 190；grid 的 auto 行在 flex 子项上会
+       只量到 summary，必须显式兜住 stage，否则轨道条溢出到卡片底部。 */
+    min-height: 234px;
+    /* 底部 Mix/Pause 是绝对定位，必须在最后一个模块之后留出真实空间。 */
+    margin-bottom: 38px;
+}
+
+.main-card.bars-combined .laneacc-stage {
+    flex: 0 0 auto;
+    height: 190px;
+    min-height: 190px;
+    max-height: 190px;
+}
+
+/* Combined mode section separators — hr-like with centered text */
+.combined-separator {
     display: none;
 }
 
-.main-card.bars-full .full-separator {
+.main-card.bars-combined .combined-separator {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -55,8 +82,8 @@
     opacity: 0.75;
 }
 
-.main-card.bars-full .full-separator::before,
-.main-card.bars-full .full-separator::after {
+.main-card.bars-combined .combined-separator::before,
+.main-card.bars-combined .combined-separator::after {
     content: "";
     flex: 1;
     height: 1px;
@@ -64,23 +91,48 @@
     border-radius: 1px;
 }
 
-.main-card.bars-pattern {
-    height: 575px;
-    min-height: 575px;
-    max-height: 575px;
+/* 未勾选的模块必须连分隔条一起消失（base.css 已用 !important 兜底，这里保持
+   组合模式规则的自洽，避免未来去掉全局 [hidden] 时回归）。 */
+.main-card.bars-combined .combined-separator[hidden] {
+    display: none;
 }
 
+/* Pattern mode: content-driven height — the card grows with the pattern
+   subtype list instead of clipping it; min-height keeps the resting height
+   stable. */
+.main-card.bars-pattern {
+    grid-template-rows: none;
+    grid-auto-rows: auto;
+    align-content: start;
+    gap: 8px;
+    height: auto;
+    min-height: 540px;
+    max-height: none;
+}
+
+.main-card.bars-pattern .ett-skill-bars,
+.main-card.bars-pattern .pp-bars,
+.main-card.bars-pattern .body-graph-wrap {
+    display: none;
+}
+
+/* 键型细分列表随卡片高度整体展开；底部留出 margin 避开绝对定位的
+   mode-tag 胶囊（bottom:10px、高约 21px）。 */
 .main-card.bars-pattern .cluster-bars {
-    overflow-y: hidden;
+    min-height: max-content;
+    height: auto;
+    max-height: none;
+    overflow-y: visible;
+    margin-bottom: 28px;
 }
 
 .main-card.bars-graph {
     grid-template-rows: auto auto auto;
     align-content: start;
     gap: 6px;
-    height: 396px;
+    height: auto;
     min-height: 396px;
-    max-height: 396px;
+    max-height: none;
 }
 
 .main-card.bars-graph .cluster-bars,
@@ -94,9 +146,9 @@
 
 .main-card.bars-none {
     grid-template-rows: auto auto;
-    height: 200px;
+    height: auto;
     min-height: 200px;
-    max-height: 200px;
+    max-height: none;
     gap: 4px;
     padding: 10px 10px 30px 10px;
 }
@@ -216,7 +268,7 @@
 }
 
 /* ReworkPP 模式：与 bars-etterna 同构——只显示 pp 块，其余主体块隐藏。
-   高度自适应内容（同 bars-full）：五小行内容撑开卡片，消除底部空白；
+   高度自适应内容（同 bars-combined）：五小行内容撑开卡片，消除底部空白；
    min-height 归零——bars-pp 没有 Full 的三块堆叠，无需 540px 下限。 */
 .main-card.bars-pp {
     grid-template-rows: none;
@@ -234,7 +286,7 @@
     display: none;
 }
 
-/* pp 框不内部滚动，随卡片高度生长全部展开（同 bars-full 的 pp-bars 处理）；
+/* pp 框不内部滚动，随卡片高度生长全部展开（同 bars-combined 的 pp-bars 处理）；
    底部留 margin 抬高，让框底边避开 mode-tag 胶囊（bottom:10px、高约 21px）。 */
 .main-card.bars-pp .pp-bars {
     overflow-x: hidden;
@@ -266,8 +318,40 @@
 }
 
 /* Full 模式：pp 块不内部滚动，随卡片高度生长全部展开 */
-.main-card.bars-full .pp-bars {
+.main-card.bars-combined .pp-bars {
     overflow-x: hidden;
     overflow-y: visible;
     max-height: none;
+}
+
+/* LaneAcc mode: single-module card. The tab strip shrinks to its natural
+   height and the lane stage takes every remaining pixel, so there is no dead
+   band between the tabs and the card body. */
+.main-card.bars-laneacc {
+    grid-template-rows: auto auto auto auto;
+    align-content: start;
+    gap: 6px;
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    /* 底部 38px 是 Mix/Pause 的独立 footer，轨道舞台不再伸到胶囊下面。 */
+    padding-bottom: 38px;
+}
+
+.main-card.bars-laneacc .content-bar-tabs {
+    min-height: 0;
+    height: auto;
+}
+
+.main-card.bars-laneacc .laneacc-wrap {
+    grid-row: 4;
+    min-height: 0;
+}
+
+.main-card.bars-laneacc .laneacc-stage {
+    /* 固定高度：轨道条落到卡片底部（只留 4px 安全带），卡片总高基本不变。 */
+    flex: 0 0 auto;
+    height: 190px;
+    min-height: 190px;
+    max-height: 190px;
 }

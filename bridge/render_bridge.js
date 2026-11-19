@@ -1,14 +1,14 @@
-import { fetchBeatmapFile } from "../osumania_map_analyser/ManiaMapAnalyser by Leo_Black/js/app/analysis.js";
-import { state } from "../osumania_map_analyser/ManiaMapAnalyser by Leo_Black/js/app/appContext.js";
-import { startGraphAnimationLoop } from "../osumania_map_analyser/ManiaMapAnalyser by Leo_Black/js/app/graph.js";
+import { fetchBeatmapFile } from "../osumania_map_analyser/ManiaMapAnalyser by Leo_Black/js/app/core/analysis.js";
+import { state } from "../osumania_map_analyser/ManiaMapAnalyser by Leo_Black/js/app/core/appContext.js";
+import { startGraphAnimationLoop } from "../osumania_map_analyser/ManiaMapAnalyser by Leo_Black/js/app/graph/index.js";
 import {
     hideOverlay,
     setStatus,
     updateCardPlayVisibility,
     updateModeTagVisibility,
     updatePauseCountVisibility,
-} from "../osumania_map_analyser/ManiaMapAnalyser by Leo_Black/js/app/hud.js";
-import { setRecomputeHandler } from "../osumania_map_analyser/ManiaMapAnalyser by Leo_Black/js/app/scheduler.js";
+} from "../osumania_map_analyser/ManiaMapAnalyser by Leo_Black/js/app/ui/hud.js";
+import { setRecomputeHandler } from "../osumania_map_analyser/ManiaMapAnalyser by Leo_Black/js/app/core/scheduler.js";
 import {
     applyAzusaSunnyReferenceHoSetting,
     applyCardBgBlurSetting,
@@ -32,7 +32,7 @@ import {
     applyUseSvDetectionSetting,
     applyVibroDetectionSetting,
     applyWsEndpointSetting,
-} from "../osumania_map_analyser/ManiaMapAnalyser by Leo_Black/js/app/settings.js";
+} from "../osumania_map_analyser/ManiaMapAnalyser by Leo_Black/js/app/core/settings.js";
 
 const DEFAULT_SETTINGS = Object.freeze({
     contentBar: "Auto",
@@ -129,6 +129,10 @@ function installBeatmapFetchBridge(osuText) {
 function applyRenderSettings(settings) {
     applyWsEndpointSetting(settings.wsEndpoint);
     applyContentBarSetting(settings.contentBar);
+    // Upstream 3.x reserves Combined for its desktop shell and maps Full to
+    // Auto. Keep the plugin's existing Full option for static screenshots.
+    state.combinedModeEnabled = String(settings.contentBar).trim().toLowerCase() === "full";
+    state.combinedModeModules = ["Pattern", "Etterna", "ReworkPP", "Graph"];
     applySrTextSetting(settings.srText);
     applyDiffTextSetting(settings.diffText);
     applyEstimatorAlgorithmSetting(settings.estimatorAlgorithm);

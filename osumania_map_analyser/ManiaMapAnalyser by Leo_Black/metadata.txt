@@ -2,7 +2,7 @@ Usecase: ingame, obs-overlay
 Name: ManiaMapAnalyser
 Author: Leo_Black
 CompatibleWith: tosu
-Resolution: 520x610
-Version: 2.0.0
+Resolution: 520x680
+Version: 3.0.2
 authorLinks: https://github.com/LeoBlackMT/osumania_map_analyser
-Notes: Real-time osu!mania overlay for tosu that estimates difficulty, analyzes Pattern/MSD, and visualizes graph + pause data for 4K, 6K, and 7K maps.
+Notes: Real-time VSRG overlay with difficulty estimation, RC/LN pattern analysis, multi-version MSD calculation, difficulty distribution and more, for 4K, 6K and 7K maps.

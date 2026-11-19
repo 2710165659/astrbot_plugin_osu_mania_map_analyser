@@ -1,0 +1,40 @@
+[package]
+name = "mma-shell"
+version = "0.1.0"
+edition = "2021"
+description = "ManiaMapAnalyser desktop shell — local aggregation bridge (24060 POST / 24061 static+ws / tosu probe / etterna poll)"
+
+[dependencies]
+tiny_http = "0.12"
+tungstenite = "0.24"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+lzma-rs = "0.3"
+md-5 = "0.10"
+sha2 = "0.10"
+ed25519-compact = "2"
+tauri = { version = "2", features = [] }
+tauri-plugin-global-shortcut = "2"
+[target.'cfg(windows)'.dependencies]
+winreg = "0.55"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[lib]
+name = "mma_shell"
+path = "src/lib.rs"
+
+# 仅开发用途：`cargo build --release --features devtools` 构建后，用
+# `MMA_DEVTOOLS=1` 启动即可在壳窗口里打开 WebView 控制台（F12/右键"检查"）。
+# 默认 release 构建不含该能力，最终用户拿到的包不暴露调试面。
+[features]
+devtools = ["tauri/devtools"]
+
+[[bin]]
+name = "mma-shell"
+path = "src/main.rs"
+
+[profile.release]
+lto = true
+strip = true

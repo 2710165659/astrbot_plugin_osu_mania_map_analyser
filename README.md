@@ -6,7 +6,11 @@ AstrBot 插件版 `osumania_map_analyser`。机器人可通过 `/ma <bid>` 下�
 
 原始项目地址：<https://github.com/LeoBlackMT/osumania_map_analyser>
 
-> 项目内 `osumania_map_analyser/ManiaMapAnalyser by Leo_Black` 已同步到上游 `fddbad2`（v1.5.0）运行时代码；受 AstrBot 插件安装行为限制，仍未采用 submodule。
+> 项目内 `osumania_map_analyser/` 已同步到上游 v3.0.2（`fb2c4b20200c674d4055839720ccb80707902691`）；受 AstrBot 插件安装行为限制，仍以普通文件纳入仓库，未采用 submodule。
+
+已适配 3.x 的 JS 模块目录调整及 Windows 下 ONNX/Etterna 运行时所需的 `.mjs`、`.wasm` MIME 类型。旧配置 `content_bar=Full` 由插件桥接为 Pattern、Etterna、ReworkPP、Graph 组合显示。默认 Mixed 算法沿用上游新逻辑，难度结果可能与 2.0.0 不同；支持的算法与 Etterna 版本见插件配置提示。非 4/6/7K 也遵循所选显示模式，不再强制回退 Pattern；难度估算范围仍由上游算法决定。
+
+兼容性回归测试：安装 Playwright Chromium 后运行 `python -m unittest discover -s tests -v`。测试使用本地生成的 mania 谱面，覆盖显示模式、4/5/6/7K、LN、倍速、IN/HO、Companella、Etterna 0.75 和正式截图流程。
 
 ## 安装
 
@@ -41,7 +45,7 @@ PY
 /ma <bid>       默认等同于 /ma -a <bid>
 /ma -n <bid>    主体不显示任何内容，即短卡片模式
 /ma -a <bid>    主体内容按谱面 LN 占比自动选择 Pattern 或 Etterna
-/ma -p <bid>    主体显示 Pattern 键型分析，非 4/6/7K 主体自动回退 Pattern
+/ma -p <bid>    主体显示 Pattern 键型分析
 /ma -e <bid>    主体显示 Etterna 7 大键型分
 /ma -g <bid>    主体显示难度变化图，命令简写 /mag
 /ma help        显示本帮助文本

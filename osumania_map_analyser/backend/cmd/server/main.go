@@ -1,15 +1,27 @@
 // osumania-telemetry is a small, self-contained Go server that collects
 // anonymous usage statistics from the osu!mania plugin and exposes a public
 // aggregate dashboard.
+//
+// The dashboard only reads write-path aggregates (daily_agg / install_days /
+// install_hours); the raw events table is a bounded debug log (~14 days).
+//
+// One-shot maintenance command (run with the service stopped):
+//
+//	telemetry-server -migrate
+//
+// rebuilds every aggregate from the raw events, prunes raw events older than
+// the retention window, and VACUUMs. Idempotent by construction.
 package main
 
 import (
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"osumania-telemetry/internal/backup"
 	"osumania-telemetry/internal/config"
+	"osumania-telemetry/internal/feedback"
 	"osumania-telemetry/internal/ratelimit"
 	"osumania-telemetry/internal/store"
 	"osumania-telemetry/internal/telemetry"
@@ -21,6 +33,17 @@ import (
 var version = "dev"
 
 func main() {
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "-migrate":
+			runMigrate()
+			return
+		case "-clean":
+			runClean()
+			return
+		}
+	}
+
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("config: %v", err)
@@ -34,11 +57,50 @@ func main() {
 
 	limiter := ratelimit.New(cfg.RateLimitPerMin)
 	eventHandler := telemetry.NewHandler(st, limiter)
-	webHandler := web.NewHandler(st, cfg.OnlineWindowMin, cfg.StatsCacheSeconds, version)
+	webHandler := web.NewHandler(st, cfg.OnlineWindowMin, cfg.ActiveMin, cfg.StatsCacheSeconds, version)
 
-	go retentionLoop(st, cfg.RetentionDays)
+	go rawRetentionLoop(st, cfg.RawRetentionDays)
+	go hourRetentionLoop(st, cfg.HourRetentionDays)
 
-	bm, err := backup.New(cfg, st)
+	var feedbackStore *store.FeedbackStore
+	if cfg.FeedbackEnabled {
+		feedbackStore, err = store.OpenFeedback(cfg.FeedbackDB)
+		if err != nil {
+			log.Fatalf("feedback store: %v", err)
+		}
+		defer feedbackStore.Close()
+		if !cfg.FeedbackReady() {
+			log.Printf("feedback: enabled but not ready (missing keys or dedup secret); endpoint disabled")
+		}
+	}
+
+	mux := http.NewServeMux()
+	mux.Handle("/api/v1/event", eventHandler)
+	if feedbackStore != nil && cfg.FeedbackReady() {
+		osuAPI := feedback.NewOSUAPI(cfg.OSUClientID, cfg.OSUClientSecret, feedbackStore,
+			cfg.FeedbackOSURatePerMin, cfg.FeedbackOSURateBurst, cfg.FeedbackOSUWaitMS,
+			cfg.FeedbackNegativeCacheDays, cfg.FeedbackAPICooldownSeconds)
+		refresh := func() error {
+			return feedback.RefreshAll(feedbackStore, cfg.FeedbackMinN, cfg.FeedbackTrimRatio)
+		}
+		ingest := feedback.NewHandler(cfg, feedbackStore, osuAPI)
+		admin := feedback.NewAdmin(feedbackStore, cfg.FeedbackAdminToken,
+			cfg.FeedbackMinN, 5, 0.5, osuAPI.Metrics, refresh)
+		mux.Handle("/api/v1/feedback", ingest)
+		mux.Handle("/api/v1/feedback/stats", admin)
+		mux.Handle("/api/v1/feedback/export.csv", admin)
+		mux.Handle("/api/v1/feedback/refresh", admin)
+		mux.Handle("/api/v1/feedback/summary", feedback.NewSummaryHandler(feedbackStore))
+		mux.Handle("/feedback", admin)
+		go feedbackAggLoop(feedbackStore, cfg.FeedbackMinN, cfg.FeedbackTrimRatio)
+		go feedbackRetentionLoop(feedbackStore, cfg.FeedbackRawRetentionDays)
+		log.Printf("feedback: enabled (db=%s, validation=%v)", cfg.FeedbackDB, cfg.FeedbackOSUValidation)
+	} else if cfg.FeedbackEnabled {
+		log.Printf("feedback: route disabled (configuration incomplete)")
+	}
+	mux.Handle("/", webHandler)
+
+	bm, err := backup.New(cfg, st, feedbackStore, version)
 	if err != nil {
 		log.Fatalf("backup: %v", err)
 	}
@@ -48,10 +110,6 @@ func main() {
 		log.Printf("backup: disabled (OBS credentials not set)")
 	}
 
-	mux := http.NewServeMux()
-	mux.Handle("/api/v1/event", eventHandler)
-	mux.Handle("/", webHandler)
-
 	server := &http.Server{
 		Addr:              cfg.Addr,
 		Handler:           mux,
@@ -60,23 +118,128 @@ func main() {
 		IdleTimeout:       60 * time.Second,
 	}
 
-	log.Printf("osumania-telemetry %s listening on %s", version, cfg.Addr)
+	log.Printf("osumania-telemetry %s listening on %s (active = %d analyzes/day)", version, cfg.Addr, cfg.ActiveMin)
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("server: %v", err)
 	}
 }
 
-func retentionLoop(st *store.Store, retentionDays int) {
+// runMigrate rebuilds the aggregates and exits. Intended to run once with the
+// service stopped; see the package comment.
+func runMigrate() {
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("config: %v", err)
+	}
+	st, err := store.Open(cfg.DBPath)
+	if err != nil {
+		log.Fatalf("store: %v", err)
+	}
+	defer st.Close()
+
+	log.Printf("migrate: rebuilding aggregates from %s ...", cfg.DBPath)
+	rep, err := st.Migrate(cfg.RawRetentionDays)
+	if err != nil {
+		log.Fatalf("migrate: %v", err)
+	}
+	log.Printf("migrate: scanned %d events -> %d agg rows, %d install-days, %d install-hours",
+		rep.EventsScanned, rep.AggRows, rep.InstallDays, rep.InstallHours)
+	log.Printf("migrate: deleted %d raw events older than %d days", rep.DeletedEvents, cfg.RawRetentionDays)
+	log.Printf("migrate: db size %d -> %d bytes", rep.SizeBefore, rep.SizeAfter)
+	log.Printf("migrate: done (aggregates are complete; starting the server is safe)")
+}
+
+// runClean purges legacy contaminated data and debug extreme anomalies.
+func runClean() {
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("config: %v", err)
+	}
+	st, err := store.Open(cfg.DBPath)
+	if err != nil {
+		log.Fatalf("store: %v", err)
+	}
+	defer st.Close()
+
+	log.Printf("clean: purging contaminated dimensions from %s ...", cfg.DBPath)
+	rep, err := st.CleanLegacyData()
+	if err != nil {
+		log.Fatalf("clean: %v", err)
+	}
+	log.Printf("clean: deleted %d invalid alg rows, %d invalid actual rows", rep.DeletedAlgRows, rep.DeletedActualRows)
+	log.Printf("clean: merged %d capsule rows (Azusa+Companella -> Azusa)", rep.MergedCapsuleRows)
+	log.Printf("clean: deleted %d debug duration rows (>30s)", rep.DeletedDurRows)
+	log.Printf("clean: deleted %d unofficial/unknown install records", rep.DeletedInstalls)
+	log.Printf("clean: done (database sanitized and VACUUM completed)")
+}
+
+// rawRetentionLoop prunes raw events (the debug log) after RawRetentionDays.
+// Aggregates are unaffected — they are the product; raw events are not.
+func rawRetentionLoop(st *store.Store, retentionDays int) {
 	if retentionDays <= 0 {
-		log.Printf("retention: disabled (keep events forever)")
+		log.Printf("raw retention: disabled (keep raw events forever)")
 		return
 	}
 	run := func() {
 		cutoff := time.Now().Add(-time.Duration(retentionDays) * 24 * time.Hour).UnixMilli()
 		if n, err := st.DeleteEventsBefore(cutoff); err != nil {
-			log.Printf("retention: %v", err)
+			log.Printf("raw retention: %v", err)
 		} else if n > 0 {
-			log.Printf("retention: deleted %d events older than %d days", n, retentionDays)
+			log.Printf("raw retention: deleted %d raw events older than %d days", n, retentionDays)
+		}
+	}
+	run()
+	for range time.Tick(24 * time.Hour) {
+		run()
+	}
+}
+
+// hourRetentionLoop bounds the install_hours table (hourly presence) to a
+// rolling window. The 24h-of-day distribution and the hourly trend for short
+// windows read it; with the default 90 days the dashboard's max window is
+// fully covered.
+func hourRetentionLoop(st *store.Store, retentionDays int) {
+	if retentionDays <= 0 {
+		log.Printf("hour retention: disabled")
+		return
+	}
+	run := func() {
+		cutoff := time.Now().Add(-time.Duration(retentionDays) * 24 * time.Hour).UnixMilli()
+		if n, err := st.DeleteHoursBefore(cutoff); err != nil {
+			log.Printf("hour retention: %v", err)
+		} else if n > 0 {
+			log.Printf("hour retention: deleted %d install-hour rows older than %d days", n, retentionDays)
+		}
+	}
+	run()
+	for range time.Tick(24 * time.Hour) {
+		run()
+	}
+}
+
+// feedbackAggLoop rebuilds the per-map and per-feature aggregates every 5
+// minutes. Raw events are the source of truth, so the tables are disposable.
+func feedbackAggLoop(st *store.FeedbackStore, minN int, trim float64) {
+	run := func() {
+		if err := feedback.RefreshAll(st, minN, trim); err != nil {
+			log.Printf("feedback agg: %v", err)
+		}
+	}
+	run()
+	for range time.Tick(5 * time.Minute) {
+		run()
+	}
+}
+
+// feedbackRetentionLoop prunes expired nonces daily plus old raw events and
+// validation cache entries.
+func feedbackRetentionLoop(st *store.FeedbackStore, rawRetentionDays int) {
+	run := func() {
+		now := time.Now().UnixMilli()
+		if n, err := st.Prune(now, rawRetentionDays, 10); err != nil {
+			log.Printf("feedback retention: %v", err)
+		} else if n > 0 {
+			log.Printf("feedback retention: deleted %d rows", n)
 		}
 	}
 	run()

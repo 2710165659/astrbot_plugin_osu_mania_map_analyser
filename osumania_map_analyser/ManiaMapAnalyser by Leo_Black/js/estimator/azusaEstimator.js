@@ -1,7 +1,16 @@
+import {
+    clamp,
+    safeDiv,
+    fmt4,
+    piecewiseLinear,
+    quantileFromSorted,
+    powerMean,
+} from "./estimatorMath.js";
 import { OsuFileParser } from "../parser/osuFileParser.js";
 import { runDanielEstimatorFromText } from "./danielEstimator.js";
 import { runSunnyEstimatorFromText } from "./sunnyEstimator.js";
 import { numericToRcLabel } from "./rcDifficultyFormat.js";
+import { computeMarathonCorrection } from "./marathonCorrection.js";
 
 const AZUSA_CONFIG = Object.freeze({
     rcLnRatioLimit: 0.18,
@@ -192,32 +201,13 @@ function buildErrorResult(code, message, extras = {}) {
     };
 }
 
-function clamp(value, min, max) {
-    return Math.max(min, Math.min(max, value));
-}
 
-function safeDiv(a, b, fallback = 0) {
-    if (!Number.isFinite(a) || !Number.isFinite(b) || Math.abs(b) < 1e-9) return fallback;
-    return a / b;
-}
 
-function fmt4(value) {
-    return Number.isFinite(value) ? Number(value.toFixed(4)) : null;
-}
 
-function piecewiseLinear(x, knots, valueCol = 1) {
-    const v = Number(x);
-    if (!Number.isFinite(v) || !Array.isArray(knots) || knots.length === 0) return v;
-    if (v <= knots[0][0]) return knots[0][valueCol];
-    const last = knots.length - 1;
-    if (v >= knots[last][0]) return knots[last][valueCol];
-    for (let i = 0; i < last; i += 1) {
-        const x0 = knots[i][0], y0 = knots[i][valueCol];
-        const x1 = knots[i + 1][0], y1 = knots[i + 1][valueCol];
-        if (v >= x0 && v <= x1) return y0 + safeDiv((v - x0) * (y1 - y0), x1 - x0, 0);
-    }
-    return v;
-}
+
+
+
+
 
 function piecewiseBlock(x, blocks) {
     const v = Number(x);
@@ -286,29 +276,9 @@ function estimateSunnyNumeric(result) {
     return Number(clamp(numeric, -2, 20).toFixed(2));
 }
 
-function quantileFromSorted(sortedValues, q) {
-    if (!sortedValues.length) {
-        return 0;
-    }
 
-    const t = clamp(Number(q), 0, 1) * (sortedValues.length - 1);
-    const left = Math.floor(t);
-    const right = Math.min(sortedValues.length - 1, left + 1);
-    const w = t - left;
-    return (sortedValues[left] * (1 - w)) + (sortedValues[right] * w);
-}
 
-function powerMean(values, p) {
-    if (!values.length) {
-        return 0;
-    }
 
-    let acc = 0;
-    for (const value of values) {
-        acc += Math.pow(Math.max(value, 0), p);
-    }
-    return Math.pow(acc / values.length, 1 / p);
-}
 
 function buildTapNotes(parsed) {
     const taps = [];
@@ -782,7 +752,7 @@ function computeCurveGapResidualCorrection(baseNumeric, blendDetails, curveStats
     return clamp(residual, -1.2, 1.2);
 }
 
-function computeReferenceCorrection(azusaEst, danielNumeric, sunnyNumeric) {
+function computeReferenceCorrection(azusaEst, danielNumeric, sunnyNumeric, curveHints = null) {
     const x = Number(azusaEst);
     if (!Number.isFinite(x)) return 0;
 
@@ -800,8 +770,17 @@ function computeReferenceCorrection(azusaEst, danielNumeric, sunnyNumeric) {
         coeffS = 0.06;
     } else if (x < 12.5) {
         gate = 1.0;
-        coeffD = 0.20;
-        coeffS = 0.13;
+        const refD = daniel != null ? daniel : x;
+        const chordRate = Number.isFinite(curveHints?.chordRate) ? curveHints.chordRate : null;
+        const streamWeight = chordRate != null ? clamp((0.45 - chordRate) / 0.15, 0, 1) : 1;
+        if (refD > 12.0 && streamWeight > 0) {
+            const t = clamp((refD - 12.0) / 0.8, 0, 1) * streamWeight;
+            coeffD = 0.20 + (0.20 * t);
+            coeffS = 0.13 + (0.12 * t);
+        } else {
+            coeffD = 0.20;
+            coeffS = 0.13;
+        }
     } else if (x < 16.0) {
         gate = 1.0;
         coeffD = 0.40;
@@ -843,6 +822,17 @@ export function runAzusaEstimatorFromText(osuText, options = {}, parsed = null) 
 
     if (columnCount !== 4) {
         return buildErrorResult("UnsupportedKeys", "Azusa only supports 4K", { lnRatio, columnCount });
+    }
+
+    // RC 模型的 LN 上限（docs/azusa_algorithm.md §2.1 记录的行为）。该检查
+    // 此前只存在于 config 与文档、从未在入口实现；RC 应用于 LN 主导谱面时
+    // 会输出无意义的 RC 数值（Mixed Mix 分支与用户直选 Azusa 均可触达此路径）。
+    if (lnRatio > AZUSA_CONFIG.rcLnRatioLimit) {
+        return buildErrorResult(
+            "UnsupportedLN",
+            `Azusa RC scope rejects LN ratio ${(lnRatio * 100).toFixed(1)}%`,
+            { lnRatio, columnCount },
+        );
     }
 
     const taps = buildTapNotes(parsedData);
@@ -944,8 +934,27 @@ export function runAzusaEstimatorFromText(osuText, options = {}, parsed = null) 
     );
     const preOutputNumeric = clamp(Number(calibratedNumeric) + curveGapResidual, -2, 20);
     const outputNumeric = calibrateAzusaOutputNumeric(preOutputNumeric);
-    const refCorrection = computeReferenceCorrection(outputNumeric, danielNumericForBlend, sunnyNumeric);
-    const finalNumeric = clamp(Number(outputNumeric) + refCorrection, -2, 20);
+    const refCorrection = computeReferenceCorrection(outputNumeric, danielNumericForBlend, sunnyNumeric, {
+        chordRate,
+    });
+    let finalNumeric = clamp(Number(outputNumeric) + refCorrection, -2, 20);
+
+    // 马拉松时长修正（估算器内部应用）：options.marathonCorrection 注入
+    // { durationS, ettValues }（缺省/无 MSD 时不触发），只降不升、对数饱和 + numeric taper；
+    // 应用后 estDiff/star/numericDifficulty 统一由修正后的 finalNumeric 派生，保证输出自洽。
+    // 参数与机制见 docs/features/marathon-correction.md。
+    const mc = options.marathonCorrection;
+    if (mc && Number.isFinite(Number(mc.durationS))) {
+        const corr = computeMarathonCorrection({
+            durationS: mc.durationS,
+            ettValues: mc.ettValues ?? null,
+            numeric: finalNumeric,
+        });
+        if (corr > 0) {
+            finalNumeric = finalNumeric - corr;
+        }
+    }
+
     const estDiff = numericToRcLabel(finalNumeric);
 
     const result = {

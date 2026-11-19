@@ -15,6 +15,15 @@ from .errors import ManiaMapAnalyserError
 
 
 class _QuietStaticHandler(SimpleHTTPRequestHandler):
+    # Windows may register .mjs as text/plain; ES modules and WASM require
+    # explicit MIME types for the bundled Etterna/ONNX runtimes.
+    extensions_map = {
+        **SimpleHTTPRequestHandler.extensions_map,
+        ".js": "text/javascript",
+        ".mjs": "text/javascript",
+        ".wasm": "application/wasm",
+    }
+
     def log_message(self, format: str, *args) -> None:  # noqa: A003
         return
 

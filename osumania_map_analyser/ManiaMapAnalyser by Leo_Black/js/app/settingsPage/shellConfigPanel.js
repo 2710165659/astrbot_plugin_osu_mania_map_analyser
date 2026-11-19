@@ -1,0 +1,823 @@
+/**
+ * Shell-config panel of the desktop settings page.
+ *
+ * Edits mma-shell-config.json through the shell's local endpoint
+ * (GET/POST /shell-config). The page never guesses the file's shape: every
+ * write is a request-key-first patch, and every render comes from a response —
+ * the POST one for the config itself, plus a re-GET for the `resolved` block
+ * (the paths the shell actually adopted, which the POST response cannot know).
+ *
+ * Patches are single-key, except `hotkeys`, which is submitted as a whole object
+ * (the four fields belong together; a half-written hotkey set would leave the
+ * shell with a mix of old and new bindings).
+ */
+
+import { setLanguage, t, tf } from "../i18n/index.js";
+import {
+    COMBINED_MODE_LABELS,
+    COMBINED_MODE_MODULES,
+    normalizeCombinedMode,
+} from "../ui/combinedMode.js";
+import { normalizeSpaceMode } from "../../laneAcc/accumulator.js";
+
+/** Local shell-config endpoint (desktop/src/server/http.rs). */
+export const SHELL_CONFIG_URL = "/shell-config";
+export const OFFSETS_STATUS_URL = "/offsets/status";
+export const OFFSETS_GENERATE_URL = "/offsets/generate";
+export const OFFSETS_UPDATE_URL = "/offsets/update";
+
+/** `gameClient` values the plugin's source router understands (Auto = decide). */
+const GAME_CLIENT_OPTIONS = ["Auto", "osu!", "Etterna", "Malody", "Malody 4"];
+
+/** Matches config::log_level()'s accepted values. */
+const LOG_LEVEL_OPTIONS = ["debug", "info", "warn", "error", "off"];
+
+// 语言下拉的取值与壳配置 `language` 字段一致。
+const LANGUAGE_OPTIONS = [
+    { value: "auto", labelKey: "ui.settings.language.auto", fallback: "Auto" },
+    { value: "zh-CN", label: "简体中文" },
+    { value: "en-US", label: "English" },
+];
+
+const ROOT_FIELDS = [
+    {
+        key: "lazerStorageRoot",
+        title: "Lazer data folder",
+        description: "Folder containing the Lazer files directory (not the install folder). Empty = auto-detect. Restart the shell after changing.",
+    },
+    {
+        key: "etternaRoot",
+        title: "Etterna root",
+        description: "Folder that holds the Etterna install. Empty = let the shell detect it.",
+    },
+    {
+        key: "malodyRoot",
+        title: "Malody V root",
+        description: "Folder that holds the Malody V install. Empty = let the shell detect it.",
+    },
+    {
+        key: "malody4Root",
+        title: "Malody 4.3.7 root",
+        description: "Folder that holds the Malody 4.3.7 install. Empty = let the shell detect it.",
+    },
+];
+
+/** Shell is Windows-only: show every detected/entered root with the same separator. */
+function normalizeWindowsPath(value) {
+    if (typeof value !== "string") {
+        return "";
+    }
+    const path = value.trim().replace(/\//g, "\\");
+    if (/^[A-Za-z]:\\$/.test(path)) {
+        return path;
+    }
+    return path.replace(/\\+$/, "");
+}
+
+const HOTKEY_FIELDS = [
+    { key: "topmost", title: "Toggle topmost" },
+    { key: "clickThrough", title: "Toggle click-through" },
+    { key: "close", title: "Close overlay" },
+    { key: "settings", title: "Open settings window" },
+];
+
+// 下面的常量保持英文：模块加载时语言还没确定，t() 必须在渲染时调用。
+const HOTKEY_HINT = "Restart the shell to apply hotkey changes.";
+const UNREADABLE_NOTICE = "Shell config unreadable (mma-shell-config.json) — editing is unavailable here.";
+
+/**
+ * @param {object} options
+ * @param {HTMLElement} options.root container element (#shell-config-root).
+ * @param {(url: string, init?: object) => Promise<object>} [options.fetchImpl]
+ *        fetch implementation (defaults to the global fetch).
+ */
+export function createShellConfigPanel({ root, fetchImpl = (url, init) => fetch(url, init), onLanguageChange = null }) {
+    let config = null;
+    let resolved = {};
+    let windowState = { topmost: true, clickThrough: false };
+    let statusText = "";
+    let statusKind = "info";
+    let saveHint = "";
+
+    let offsetsInfo = null;
+    let offsetsActionMsg = "";
+    let offsetsActionKind = "info";
+    let lastGeneratedSections = null;
+
+    async function requestJson(url, init) {
+        try {
+            const response = await fetchImpl(url, init);
+            const status = response && typeof response.status === "number" ? response.status : 0;
+            let body = null;
+            if (response) {
+                try {
+                    body = await response.json();
+                } catch {
+                    body = null;
+                }
+            }
+            if (!response || !response.ok) {
+                return { ok: false, status, body };
+            }
+            return { ok: true, status, body };
+        } catch (error) {
+            return { ok: false, status: 0, error };
+        }
+    }
+
+    function setStatus(text, kind) {
+        statusText = text || "";
+        statusKind = kind || "info";
+    }
+
+    async function fetchOffsetsStatus() {
+        const result = await requestJson(OFFSETS_STATUS_URL, { cache: "no-store" });
+        if (result.ok && result.body) {
+            offsetsInfo = result.body;
+        }
+    }
+
+    // 生成器 stderr/JSON 里的固定原因也走词典；未知技术细节保留原文便于排查。
+    function localizeGenDetail(detail) {
+        const text = String(detail || "");
+        if (!text) return "";
+        const rules = [
+            [/process is not currently running/i, "genProcessNotRunning", "osu! (lazer) 进程未运行。"],
+            [/access was denied/i, "genAccessDenied", "无法读取 osu! 进程，请以管理员身份运行。"],
+            [/lazer must be 64-bit|detected 32-bit/i, "genArchMismatch", "检测到 32 位 osu! 进程；lazer 必须是 64 位。"],
+            [/could not locate lazer directory/i, "genLazerDirMissing", "无法定位 osu!lazer 安装目录。"],
+            [/could not find lazer anchor pattern/i, "genAnchorNotFound", "在游戏内存中找不到 lazer 特征码。"],
+            [/live validation checks/i, "genValidationFailed", "找到候选 GameBase，但活体校验（MD5Hash / ScreenStack / VTable）失败。"],
+            [/failed to read IL metadata/i, "genIlMetadataFailed", "读取 lazer IL 元数据失败。"],
+            [/only supported on Windows/i, "genUnsupportedOs", "该功能仅支持 Windows。"],
+        ];
+        for (const [pattern, key, fallback] of rules) {
+            if (pattern.test(text)) return t(`ui.shell.offsets.${key}`, fallback);
+        }
+        return text;
+    }
+
+    // 壳端返回稳定 code，显示层负责本地化；message 只作为旧壳/未知错误的兜底。
+    function offsetsErrorMessage(body, error, status) {
+        const code = body && body.code;
+        const rawDetail = body && typeof body.detail === "string" ? body.detail : "";
+        const detail = localizeGenDetail(rawDetail);
+        const message = body && typeof body.message === "string" ? body.message : "";
+        if (code === "gen_not_found" || message === "gen.exe not found (neither next to mma-shell.exe nor in dev tree)") {
+            return t("ui.shell.offsets.genNotFound", "gen.exe was not found next to mma-shell.exe or in the dev tree.");
+        }
+        if (code === "gen_failed" || message === "generator failed or game process not running") {
+            const base = t("ui.shell.offsets.genFailed", "The generator failed or the game process is not running.");
+            return detail ? `${base} ${detail}` : base;
+        }
+        if (code === "gen_spawn_failed" || message.startsWith("failed to run gen.exe")) {
+            const base = t("ui.shell.offsets.genSpawnFailed", "Could not start gen.exe.");
+            return detail ? `${base} ${detail}` : base;
+        }
+        if (code === "manifest_unreadable" || (body && body.message === "Remote manifest unreadable or malformed")) {
+            return t("ui.shell.offsets.manifestUnreadable", "The remote manifest is unreadable or malformed; keeping existing local offsets.");
+        }
+        if (code === "network_unavailable" || (body && body.status === "offline_fallback")) {
+            return t("ui.shell.offsets.networkUnavailable", "Network unavailable or remote host unreachable; keeping existing local offsets.");
+        }
+        return (body && body.message) || (error && error.message) || `HTTP ${status || "?"}`;
+    }
+
+    function sectionStateText(sections) {
+        if (!sections || typeof sections !== "object") {
+            return "";
+        }
+        return ["score", "results", "mods"]
+            .map((name) => `${name} ${sections[name] ? "✓" : "—"}`)
+            .join(" · ");
+    }
+
+    async function generateOffsets() {
+        offsetsActionMsg = t("ui.shell.offsets.scanning", "Scanning running osu! and generating offsets…");
+        offsetsActionKind = "saving";
+        render();
+        const result = await requestJson(OFFSETS_GENERATE_URL, { method: "POST" });
+        if (!result.ok) {
+            offsetsActionMsg = `${t("ui.shell.offsets.generateFailed", "Generation failed")}: ${offsetsErrorMessage(result.body, result.error, result.status)}`;
+            offsetsActionKind = "error";
+        } else {
+            const sections = result.body && result.body.sections;
+            lastGeneratedSections = sections || null;
+            if (sections && (!sections.score || !sections.results)) {
+                const key = !sections.score && !sections.results
+                    ? "generatedMissingBoth"
+                    : !sections.score
+                        ? "generatedMissingScore"
+                        : "generatedMissingResults";
+                const fallback = !sections.score && !sections.results
+                    ? "Offsets generated, but this run only captured the base fields. Enter a play/replay and generate once, then stay on the result screen and generate again to fill score/results."
+                    : !sections.score
+                        ? "Offsets generated, but the score section required by LaneAcc/LivePP is missing. Enter a play/replay and generate again."
+                        : "Offsets generated, but the results section required by result-screen feedback is missing. Stay on the result screen and generate again.";
+                offsetsActionMsg = t(`ui.shell.offsets.${key}`, fallback);
+                offsetsActionKind = "info";
+            } else if (sections) {
+                offsetsActionMsg = tf(
+                    "ui.shell.offsets.generatedSections",
+                    { sections: sectionStateText(sections) },
+                    `Offsets generated and verified (${sectionStateText(sections)}).`,
+                );
+                offsetsActionKind = "ok";
+            } else {
+                offsetsActionMsg = t("ui.shell.offsets.generated", "Offsets generated and verified successfully.");
+                offsetsActionKind = "ok";
+            }
+        }
+        await fetchOffsetsStatus();
+        render();
+    }
+
+    async function updateOffsets() {
+        offsetsActionMsg = t("ui.shell.offsets.checking", "Checking remote manifest and verifying signatures…");
+        offsetsActionKind = "saving";
+        render();
+        const result = await requestJson(OFFSETS_UPDATE_URL, { method: "POST" });
+        if (!result.ok) {
+            offsetsActionMsg = `${t("ui.shell.offsets.updateFailed", "Update failed")}: ${offsetsErrorMessage(result.body, result.error, result.status)}`;
+            offsetsActionKind = "error";
+        } else {
+            const code = result.body && result.body.code;
+            const updated = result.body && typeof result.body.updated === "number" ? result.body.updated : 0;
+            const skipped = result.body && typeof result.body.skipped === "number" ? result.body.skipped : 0;
+            if (code === "network_unavailable" || (result.body && result.body.status === "offline_fallback")) {
+                offsetsActionMsg = t("ui.shell.offsets.networkUnavailable", "Network unavailable or remote host unreachable; keeping existing local offsets.");
+                offsetsActionKind = "info";
+            } else if (code === "manifest_unreadable" || (result.body && result.body.message === "Remote manifest unreadable or malformed")) {
+                offsetsActionMsg = t("ui.shell.offsets.manifestUnreadable", "The remote manifest is unreadable or malformed; keeping existing local offsets.");
+                offsetsActionKind = "error";
+            } else if (code === "ok") {
+                offsetsActionMsg = tf(
+                    "ui.shell.offsets.updateSummary",
+                    { updated, skipped },
+                    `Offsets check complete: ${updated} table(s) updated, ${skipped} already current.`,
+                );
+                offsetsActionKind = "ok";
+            } else {
+                offsetsActionMsg = result.body && result.body.message
+                    ? result.body.message
+                    : (updated > 0
+                        ? `${t("ui.shell.offsets.updatedCount", "Updated")} ${updated} ${t("ui.shell.offsets.tables", "table(s)")}`
+                        : t("ui.shell.offsets.upToDate", "Offsets are up to date."));
+                offsetsActionKind = "ok";
+            }
+        }
+        await fetchOffsetsStatus();
+        render();
+    }
+
+    /** GET /shell-config → config + resolved; a 400 renders a read-only notice. */
+    async function load() {
+        await fetchOffsetsStatus();
+        const result = await requestJson(SHELL_CONFIG_URL, { cache: "no-store" });
+        if (!result.ok || !result.body || !result.body.config || typeof result.body.config !== "object") {
+            config = null;
+            resolved = {};
+            saveHint = "";
+            setStatus(
+                result.status === 400
+                    ? t("ui.shell.status.unreadable", UNREADABLE_NOTICE)
+                    : `${t("ui.shell.offsets.unreadableHttp", "Cannot read the shell config")} (HTTP ${result.status || "?"}).`,
+                "error",
+            );
+            render();
+            return false;
+        }
+        config = result.body.config;
+        resolved = result.body.resolved && typeof result.body.resolved === "object" ? result.body.resolved : {};
+        if (result.body.window && typeof result.body.window === "object") {
+            windowState = result.body.window;
+        }
+        setStatus("", "info");
+        render();
+        return true;
+    }
+
+    /** POST a patch; re-render from the response (400 = nothing was written). */
+    async function write(patch, { refreshResolvedAfter = false } = {}) {
+        setStatus(t("ui.shell.status.saving", "Saving…"), "saving");
+        saveHint = "";
+        render();
+        const result = await requestJson(SHELL_CONFIG_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(patch),
+        });
+        if (!result.ok) {
+            if (result.status === 400) {
+                setStatus(`${t("ui.shell.status.unreadable", UNREADABLE_NOTICE)} (${t("ui.shell.status.nothingWritten", "nothing was written")})`, "error");
+            } else {
+                const detail = result.error && result.error.message ? result.error.message : `HTTP ${result.status || "?"}`;
+                setStatus(`${t("ui.shell.status.saveFailed", "Save failed")}: ${detail}`, "error");
+            }
+            render();
+            return false;
+        }
+        if (result.body && typeof result.body === "object") {
+            if (result.body.config && typeof result.body.config === "object") {
+                config = result.body.config;
+            } else if (!result.body.window) {
+                config = result.body;
+            }
+            if (result.body.window && typeof result.body.window === "object") {
+                windowState = result.body.window;
+            }
+        }
+        setStatus(t("ui.shell.status.saved", "Saved."), "ok");
+        saveHint = refreshResolvedAfter ? t("ui.shell.status.refreshing", "Refreshing the adopted paths…") : "";
+        render();
+        if (refreshResolvedAfter) {
+            await refreshResolved();
+            saveHint = "";
+        }
+        return true;
+    }
+
+    /** Re-reads only the `resolved` block (after a root-path write). */
+    async function refreshResolved() {
+        const result = await requestJson(SHELL_CONFIG_URL, { cache: "no-store" });
+        if (!result.ok || !result.body || !result.body.resolved) {
+            return false;
+        }
+        resolved = result.body.resolved;
+        render();
+        return true;
+    }
+
+    function render() {
+        root.textContent = "";
+        const section = document.createElement("section");
+        section.id = "shell-config-section";
+        section.className = "settings-panel";
+
+        const title = document.createElement("h2");
+        title.textContent = t("ui.shell.sectionTitle", "Shell Configuration");
+        section.appendChild(title);
+
+        const sub = document.createElement("p");
+        sub.className = "settings-panel-sub";
+        sub.textContent = t("ui.shell.sectionSub", "Only the desktop shell reads these values (mma-shell-config.json, next to mma-shell.exe).");
+        section.appendChild(sub);
+
+        const status = document.createElement("p");
+        status.className = `shell-config-status shell-config-status-${statusKind}`;
+        status.textContent = statusText || saveHint;
+        section.appendChild(status);
+
+        if (config) {
+            section.appendChild(buildLanguageRow());
+            section.appendChild(buildGameClientRow());
+            for (const field of ROOT_FIELDS) {
+                section.appendChild(buildRootRow(field));
+            }
+            section.appendChild(buildWindowTopmostRow());
+            section.appendChild(buildWindowClickThroughRow());
+            section.appendChild(buildHotkeysRow());
+            section.appendChild(buildLogLevelRow());
+            if (offsetsInfo) {
+                section.appendChild(buildOffsetsSection());
+            }
+            // 组合模式与分轨准确度同属「桌面壳专属卡片配置」，合并为一个区块。
+            section.appendChild(buildDesktopCardConfigSection());
+        }
+        root.appendChild(section);
+    }
+
+    function buildRow(key, title, description, control) {
+        const row = document.createElement("div");
+        row.className = "shell-config-row";
+        row.dataset.shellKey = key;
+
+        const info = document.createElement("span");
+        info.className = "settings-row-info";
+        const titleEl = document.createElement("span");
+        titleEl.className = "settings-row-title";
+        titleEl.textContent = title;
+        info.appendChild(titleEl);
+        if (description) {
+            const descEl = document.createElement("span");
+            descEl.className = "settings-row-desc";
+            descEl.textContent = description;
+            info.appendChild(descEl);
+        }
+
+        const controlWrap = document.createElement("span");
+        controlWrap.className = "settings-row-control";
+        controlWrap.dataset.shellKey = key;
+        controlWrap.appendChild(control);
+
+        row.appendChild(info);
+        row.appendChild(controlWrap);
+        return row;
+    }
+
+    function buildLanguageRow() {
+        const select = document.createElement("select");
+        select.dataset.shellKey = "language";
+        const current = String(config.language || "auto");
+        for (const option of LANGUAGE_OPTIONS) {
+            const optionEl = document.createElement("option");
+            optionEl.value = option.value;
+            optionEl.textContent = option.labelKey ? t(option.labelKey, option.fallback) : option.label;
+            optionEl.selected = option.value === current;
+            select.appendChild(optionEl);
+        }
+        select.value = current;
+        select.addEventListener("change", async () => {
+            const value = select.value;
+            // 先切内存里的语言（并写 localStorage），再落盘：即便写盘失败，本次会话也对。
+            setLanguage(value === "auto" ? (typeof navigator !== "undefined" ? navigator.language : "") : value);
+            await write({ language: value });
+            if (typeof onLanguageChange === "function") {
+                try {
+                    onLanguageChange(value);
+                } catch (error) {
+                    console.error("[shell-config] language change handler failed:", error);
+                }
+            }
+            // 整页重载最彻底（预设面板等由各自 init 重建）；重载失效时上面的就地重渲染已兜底。
+            window.location.reload();
+        });
+        return buildRow(
+            "language",
+            t("ui.shell.field.language.title", "Interface language"),
+            t("ui.shell.field.language.description", "Only affects the shell's own pages; tosu's settings panel stays English."),
+            select,
+        );
+    }
+
+    function buildGameClientRow() {
+        const select = document.createElement("select");
+        select.dataset.shellKey = "gameClient";
+        const current = String(config.gameClient || "Auto");
+        for (const option of GAME_CLIENT_OPTIONS) {
+            const optionEl = document.createElement("option");
+            optionEl.value = option;
+            optionEl.textContent = t(`option.${option}`, option);
+            optionEl.selected = option === current;
+            select.appendChild(optionEl);
+        }
+        select.value = current;
+        select.addEventListener("change", () => {
+            write({ gameClient: select.value });
+        });
+        return buildRow(
+            "gameClient",
+            t("ui.shell.field.gameClient.title", "Game client"),
+            t("ui.shell.field.gameClient.description", "Auto picks the active source; a fixed value forces that source."),
+            select,
+        );
+    }
+
+    function buildRootRow(field) {
+        const wrap = document.createElement("span");
+        wrap.className = "settings-root-field";
+
+        const input = document.createElement("input");
+        input.type = "text";
+        input.dataset.shellKey = field.key;
+        input.value = normalizeWindowsPath(config[field.key]);
+        input.addEventListener("change", () => {
+            const value = normalizeWindowsPath(input.value);
+            input.value = value;
+            write({ [field.key]: value }, { refreshResolvedAfter: true });
+        });
+        wrap.appendChild(input);
+
+        const adopted = resolved ? resolved[field.key] : null;
+        const readout = document.createElement("span");
+        readout.className = "shell-config-resolved";
+        readout.dataset.resolvedKey = field.key;
+        readout.textContent = `${t("ui.shell.resolved.adopted", "adopted")}: ${adopted ? normalizeWindowsPath(adopted) : t("ui.shell.resolved.notDetected", "not detected")}`;
+        wrap.appendChild(readout);
+
+        return buildRow(
+            field.key,
+            t(`ui.shell.field.${field.key}.title`, field.title),
+            t(`ui.shell.field.${field.key}.description`, field.description),
+            wrap,
+        );
+    }
+
+    function buildWindowTopmostRow() {
+        const input = document.createElement("input");
+        input.type = "checkbox";
+        input.dataset.shellKey = "topmost";
+        input.checked = Boolean(windowState && windowState.topmost);
+        input.addEventListener("change", () => {
+            write({ window: { topmost: input.checked } });
+        });
+        return buildRow(
+            "topmost",
+            t("ui.shell.field.topmost.title", "Always on Top"),
+            t("ui.shell.field.topmost.description", "Keep the overlay window above all other windows."),
+            input,
+        );
+    }
+
+    function buildWindowClickThroughRow() {
+        const input = document.createElement("input");
+        input.type = "checkbox";
+        input.dataset.shellKey = "clickThrough";
+        input.checked = Boolean(windowState && windowState.clickThrough);
+        input.addEventListener("change", () => {
+            write({ window: { clickThrough: input.checked } });
+        });
+        return buildRow(
+            "clickThrough",
+            t("ui.shell.field.clickThrough.title", "Click-Through"),
+            t("ui.shell.field.clickThrough.description", "Pass mouse clicks through the overlay window to the game or desktop."),
+            input,
+        );
+    }
+
+    function buildHotkeysRow() {
+        const wrap = document.createElement("span");
+        wrap.className = "shell-config-hotkeys";
+        const inputs = new Map();
+        const hotkeys = config.hotkeys && typeof config.hotkeys === "object" ? config.hotkeys : {};
+
+        for (const field of HOTKEY_FIELDS) {
+            const fieldWrap = document.createElement("label");
+            fieldWrap.className = "shell-config-hotkey";
+            const label = document.createElement("span");
+            label.className = "shell-config-hotkey-label";
+            label.textContent = t(`ui.shell.hotkey.${field.key}`, field.title);
+            const input = document.createElement("input");
+            input.type = "text";
+            input.dataset.shellKey = field.key;
+            input.value = typeof hotkeys[field.key] === "string" ? hotkeys[field.key] : "";
+            input.addEventListener("change", () => {
+                const next = {};
+                for (const [key, el] of inputs) {
+                    next[key] = el.value;
+                }
+                write({ hotkeys: next });
+            });
+            inputs.set(field.key, input);
+            fieldWrap.appendChild(label);
+            fieldWrap.appendChild(input);
+            wrap.appendChild(fieldWrap);
+        }
+
+        const hint = document.createElement("span");
+        hint.className = "shell-config-hint";
+        hint.textContent = t("ui.shell.hotkey.hint", HOTKEY_HINT);
+        wrap.appendChild(hint);
+
+        return buildRow("hotkeys", t("ui.shell.field.hotkeys.title", "Hotkeys"), t("ui.shell.field.hotkeys.description", "Shell-wide shortcuts."), wrap);
+    }
+
+    function buildDesktopCardConfigSection() {
+        const section = document.createElement("div");
+        section.className = "shell-config-subsection";
+        section.id = "shell-card-config-section";
+        const title = document.createElement("h3");
+        title.className = "settings-group-title";
+        title.textContent = t("ui.shell.cardConfig.title", "Desktop-shell card settings");
+        section.appendChild(title);
+        section.appendChild(buildCombinedModeSection());
+        section.appendChild(buildLaneAccSpaceModeSection());
+        return section;
+    }
+
+    function buildCombinedModeSection() {
+        const current = normalizeCombinedMode(config.combinedMode);
+        const section = document.createElement("div");
+        section.className = "shell-config-subsection";
+        section.id = "shell-combined-mode-section";
+
+        const toggle = document.createElement("input");
+        toggle.type = "checkbox";
+        toggle.dataset.shellKey = "combinedMode-enabled";
+        toggle.checked = current.enabled;
+        toggle.addEventListener("change", () => {
+            list.hidden = !toggle.checked;
+            write({ combinedMode: { enabled: toggle.checked, modules: current.modules } });
+        });
+        section.appendChild(buildRow(
+            "combinedMode",
+            t("ui.shell.combinedMode.enable", "Enable combined mode"),
+            t("ui.shell.combinedMode.description", "Show several card sections at once, in the order below."),
+            toggle,
+        ));
+
+        const list = document.createElement("div");
+        list.className = "shell-combined-mode-list";
+        list.hidden = !current.enabled;
+        list.setAttribute(
+            "aria-label",
+            t("ui.shell.combinedMode.modulesTitle", "Sections and order"),
+        );
+
+        // 已勾选的模块按保存顺序在前；未勾选的按默认顺序追加，方便重新勾选。
+        const ordered = [
+            ...current.modules,
+            ...COMBINED_MODE_MODULES.filter((module) => !current.modules.includes(module)),
+        ];
+        for (const module of ordered) {
+            const checked = current.modules.includes(module);
+            const moduleKey = module === "ReworkPP" ? "pp" : module.toLowerCase();
+            const labelText = t(`ui.shell.combinedMode.module.${moduleKey}`, COMBINED_MODE_LABELS[module]);
+            const row = document.createElement("div");
+            row.className = "shell-combined-mode-item";
+            row.dataset.module = module;
+
+            const label = document.createElement("label");
+            label.className = "shell-combined-mode-label";
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.dataset.shellKey = `combinedMode-${module}`;
+            checkbox.checked = checked;
+            // 只剩最后一个已勾选模块时禁止取消，保证 Combined 至少一个模块。
+            checkbox.disabled = checked && current.modules.length === 1;
+            if (checkbox.disabled) {
+                checkbox.title = t("ui.shell.combinedMode.atLeastOne", "Keep at least one section.");
+            }
+            checkbox.addEventListener("change", () => {
+                let next;
+                if (checkbox.checked) {
+                    next = current.modules.includes(module)
+                        ? current.modules.slice()
+                        : [...current.modules, module];
+                } else {
+                    next = current.modules.filter((item) => item !== module);
+                    if (next.length === 0) {
+                        checkbox.checked = true;
+                        return;
+                    }
+                }
+                write({ combinedMode: { enabled: current.enabled, modules: next } });
+            });
+            label.appendChild(checkbox);
+            label.appendChild(document.createTextNode(labelText));
+            row.appendChild(label);
+
+            const index = current.modules.indexOf(module);
+            for (const [direction, symbol, labelKey, fallback] of [
+                ["up", "↑", "ui.shell.combinedMode.moveUp", "Move up"],
+                ["down", "↓", "ui.shell.combinedMode.moveDown", "Move down"],
+            ]) {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.className = "settings-action-btn shell-combined-mode-move";
+                button.dataset.move = direction;
+                button.textContent = symbol;
+                button.title = t(labelKey, fallback);
+                button.setAttribute("aria-label", `${t(labelKey, fallback)}: ${labelText}`);
+                button.disabled = !checked
+                    || (direction === "up" && index === 0)
+                    || (direction === "down" && index === current.modules.length - 1);
+                button.addEventListener("click", () => {
+                    const next = current.modules.slice();
+                    const from = next.indexOf(module);
+                    const to = direction === "up" ? from - 1 : from + 1;
+                    if (from < 0 || to < 0 || to >= next.length) {
+                        return;
+                    }
+                    [next[from], next[to]] = [next[to], next[from]];
+                    write({ combinedMode: { enabled: current.enabled, modules: next } });
+                });
+                row.appendChild(button);
+            }
+
+            list.appendChild(row);
+        }
+        section.appendChild(list);
+
+        return section;
+    }
+
+    function buildLaneAccSpaceModeSection() {
+        const section = document.createElement("div");
+        section.className = "shell-config-subsection";
+        section.id = "shell-laneacc-section";
+
+        const select = document.createElement("select");
+        select.dataset.shellKey = "laneAccSpaceMode";
+        const current = normalizeSpaceMode(config.laneAccSpaceMode);
+        for (const [value, labelKey, fallback] of [
+            ["independent", "ui.shell.laneAcc.space.independent", "Independent Space lane"],
+            ["left", "ui.shell.laneAcc.space.left", "Middle lane = left hand"],
+            ["right", "ui.shell.laneAcc.space.right", "Middle lane = right hand"],
+        ]) {
+            const option = document.createElement("option");
+            option.value = value;
+            option.textContent = t(labelKey, fallback);
+            option.selected = value === current;
+            select.appendChild(option);
+        }
+        select.value = current;
+        select.addEventListener("change", () => {
+            write({ laneAccSpaceMode: select.value });
+        });
+        section.appendChild(buildRow(
+            "laneAccSpaceMode",
+            t("ui.shell.laneAcc.space.title", "Odd-key middle lane"),
+            t("ui.shell.laneAcc.space.description", "Only affects the LaneAcc lane groups; it never changes accuracy or cache."),
+            select,
+        ));
+        return section;
+    }
+
+    function buildLogLevelRow() {
+        const select = document.createElement("select");
+        select.dataset.shellKey = "logLevel";
+        const current = String(config.logLevel || "info");
+        for (const option of LOG_LEVEL_OPTIONS) {
+            const optionEl = document.createElement("option");
+            optionEl.value = option;
+            optionEl.textContent = option;
+            optionEl.selected = option === current;
+            select.appendChild(optionEl);
+        }
+        select.value = current;
+        select.addEventListener("change", () => {
+            write({ logLevel: select.value });
+        });
+        return buildRow("logLevel", t("ui.shell.field.logLevel.title", "Log level"), t("ui.shell.field.logLevel.description", "Takes effect immediately."), select);
+    }
+
+    function buildOffsetsSection() {
+        const wrap = document.createElement("div");
+        wrap.className = "shell-config-subsection";
+
+        const header = document.createElement("h3");
+        header.className = "settings-group-title";
+        header.textContent = t("ui.shell.offsets.title", "Memory Offsets Management");
+        wrap.appendChild(header);
+
+        const stableInfo = offsetsInfo.stable || {};
+        const stableDesc = stableInfo.loaded
+            ? `${t("ui.shell.offsets.active", "Active")} (${stableInfo.anchors_count || 7} ${t("ui.shell.offsets.anchors", "anchors")}, ${stableInfo.arch || "x86"})`
+            : t("ui.shell.offsets.fallbackDesc", "Fallback table active");
+        const stableBadge = document.createElement("span");
+        stableBadge.className = `shell-config-badge ${stableInfo.loaded ? "badge-ok" : "badge-warn"}`;
+        stableBadge.textContent = stableInfo.loaded ? t("ui.shell.offsets.active", "Active") : t("ui.shell.offsets.fallback", "Fallback");
+        wrap.appendChild(buildRow("offsetsStable", t("ui.shell.offsets.stableTitle", "osu!stable Offsets"), stableDesc, stableBadge));
+
+        const lazerInfo = offsetsInfo.lazer || {};
+        const generatedSections = lastGeneratedSections ? ` · ${sectionStateText(lastGeneratedSections)}` : "";
+        const lazerDesc = lazerInfo.loaded
+            ? `v${lazerInfo.version || "unknown"} (runtime: ${lazerInfo.runtime_version || "unknown"}, ${lazerInfo.types_count || 0} types)${generatedSections}`
+            : t("ui.shell.offsets.fallbackDesc", "Fallback table active");
+        const lazerBadge = document.createElement("span");
+        lazerBadge.className = `shell-config-badge ${lazerInfo.loaded ? "badge-ok" : "badge-warn"}`;
+        lazerBadge.textContent = lazerInfo.loaded ? t("ui.shell.offsets.active", "Active") : t("ui.shell.offsets.fallback", "Fallback");
+        wrap.appendChild(buildRow("offsetsLazer", t("ui.shell.offsets.lazerTitle", "osu!lazer Offsets"), lazerDesc, lazerBadge));
+
+        const actionsWrap = document.createElement("div");
+        actionsWrap.className = "shell-config-actions";
+
+        const genBtn = document.createElement("button");
+        genBtn.type = "button";
+        genBtn.className = "settings-action-btn";
+        genBtn.textContent = t("ui.shell.offsets.generate", "Live Generator");
+        genBtn.title = offsetsInfo.generator_ready
+            ? t("ui.shell.offsets.generateHint", "Extract offsets from running osu! with zero .NET SDK")
+            : t("ui.shell.offsets.generateMissing", "gen.exe not detected");
+        genBtn.disabled = !offsetsInfo.generator_ready;
+        genBtn.addEventListener("click", () => generateOffsets());
+        actionsWrap.appendChild(genBtn);
+
+        const updateBtn = document.createElement("button");
+        updateBtn.type = "button";
+        updateBtn.className = "settings-action-btn";
+        updateBtn.textContent = t("ui.shell.offsets.update", "Check Remote Updates");
+        updateBtn.title = t("ui.shell.offsets.updateHint", "Verify Ed25519 signed manifest and sync updated tables");
+        updateBtn.addEventListener("click", () => updateOffsets());
+        actionsWrap.appendChild(updateBtn);
+
+        if (offsetsActionMsg) {
+            const statusEl = document.createElement("div");
+            statusEl.className = `shell-config-action-status shell-config-status-${offsetsActionKind}`;
+            statusEl.textContent = offsetsActionMsg;
+            actionsWrap.appendChild(statusEl);
+        }
+
+        const workflowHint = document.createElement("div");
+        workflowHint.className = "shell-config-workflow-hint";
+        workflowHint.textContent = t(
+            "ui.shell.offsets.workflowHint",
+            "New lazer version: generate once in play/replay for score, then once on the result screen for results.",
+        );
+        actionsWrap.appendChild(workflowHint);
+
+        wrap.appendChild(buildRow("offsetsActions", t("ui.shell.offsets.actionsTitle", "Offsets Actions"), t("ui.shell.offsets.actionsDescription", "Update or generate memory layout tables for osu! clients."), actionsWrap));
+
+        return wrap;
+    }
+
+
+    return {
+        load,
+        refresh: load,
+        refreshResolved,
+        getConfig: () => config,
+        getResolved: () => resolved,
+    };
+}

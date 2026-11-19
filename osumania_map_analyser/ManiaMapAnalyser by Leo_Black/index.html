@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en" class="ma-theme-osu ma-fx-triangles ma-fx-cover">
 
 <head>
@@ -10,6 +10,7 @@
 </head>
 
 <body>
+<div class="mma-drag-bar" data-tauri-drag-region><span class="mma-drag-hint" data-tauri-drag-region>⋮⋮</span></div>
     <main class="dashboard">
         <section class="card main-card">
             <div class="triangle-field" aria-hidden="true"></div>
@@ -19,7 +20,12 @@
                         <path d="M12 3.2l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.5 6.8 19.2l1-5.8L3.6 9.3l5.8-.8L12 3.2z"></path>
                     </svg>
                 </span>
+                <!-- 选区模式时间胶囊（[mm:ss - mm:ss]）：只在壳内选区生效时显示，写入者 js/app/graphSection/overlay.js -->
+                <span id="section-time" class="section-time" hidden>[--:-- - --:--]</span>
                 <p id="status" class="status">Waiting to load beatmap file...</p>
+                <!-- 壳相位提示：与 #status 同排的**独立**元素（扫描 13–23 s 期间显示壳下发的那句话）。写入者只有 js/app/sources/osuScanHint.js。 -->
+                <p id="osu-scan-hint" class="osu-scan-hint" hidden></p>
+                <span id="mma-source-dot" class="mma-source-dot off" aria-hidden="true"></span>
             </div>
 
             <div class="star-block" id="rework">
@@ -42,12 +48,17 @@
                             <path id="rework-diff-graph-fill-play" class="star-graph-fill-play" d="" clip-path="url(#rework-diff-graph-play-clip)"></path>
                             <path id="rework-diff-graph-line" class="star-graph-line" d=""></path>
                             <g id="rework-diff-graph-pause-markers"></g>
-                            <line id="rework-diff-graph-cursor" class="star-graph-cursor" x1="0" y1="0" x2="0" y2="86" hidden></line>
-                            <circle id="rework-diff-graph-cursor-dot" class="star-graph-cursor-dot" cx="0" cy="0" r="2.8" hidden></circle>
+                            <g class="graph-section-overlay is-hidden" aria-hidden="true">
+                                <rect class="graph-section-mask" x="0" y="0" width="0" height="0"></rect>
+                                <line class="graph-section-edge graph-section-edge-start" x1="0" x2="0" y1="0" y2="0"></line>
+                                <line class="graph-section-edge graph-section-edge-end" x1="0" x2="0" y1="0" y2="0"></line>
+                            </g>
+                            <line id="rework-diff-graph-cursor" class="star-graph-cursor" x1="0" y1="0" x2="0" y2="86"></line>
+                            <circle id="rework-diff-graph-cursor-dot" class="star-graph-cursor-dot" cx="0" cy="0" r="2.8"></circle>
                         </svg>
                         <div id="rework-diff-graph-error" class="star-graph-error" hidden>Graph unavailable</div>
                     </div>
-                    <div class="star-caption" id="est-diff-caption">Estimate Difficulty</div>
+                    <div class="star-caption" id="est-diff-caption">Est. Diff</div>
                 </div>
                 <div class="star-tip" id="star-tip" hidden>
                     <span class="star-dot" data-level="5"></span>
@@ -59,22 +70,48 @@
                 </div>
             </div>
 
-            <div class="full-separator" id="sep-pattern" hidden>Pattern</div>
+            <!-- 壳内 Tab 胶囊栏：仅桌面壳紧凑模式显示；Combined 开启或 contentBar=None 时隐藏。
+                 只有左键 click 切换，不挂滚轮/触摸/键盘/拖拽。 -->
+            <div id="content-bar-tabs" class="content-bar-tabs" role="group" aria-label="Card body sections" hidden>
+                <button type="button" class="content-tab" data-content-tab="Pattern" aria-pressed="false">Pattern</button>
+                <button type="button" class="content-tab" data-content-tab="Etterna" aria-pressed="false">Etterna</button>
+                <button type="button" class="content-tab" data-content-tab="Graph" aria-pressed="false">Graph</button>
+                <button type="button" class="content-tab" data-content-tab="ReworkPP" aria-pressed="false">PP</button>
+                <button type="button" class="content-tab" data-content-tab="LaneAcc" aria-pressed="false">LaneAcc</button>
+            </div>
+
+            <div class="combined-separator" id="sep-laneacc" hidden>LaneAcc</div>
+            <div id="laneacc-wrap" class="laneacc-wrap" hidden>
+                <div class="laneacc-summary">
+                    <div class="laneacc-sv1">
+                        <span class="laneacc-badge">ScoreV1</span>
+                        <span id="laneacc-sv1-value" class="laneacc-sv1-value">100.00%</span>
+                        <span id="laneacc-od" class="laneacc-chip" hidden></span>
+                    </div>
+                    <div id="laneacc-hands" class="laneacc-hands"></div>
+                </div>
+                <div id="laneacc-stage" class="laneacc-stage" role="group" aria-label="Lane accuracy">
+                    <div id="laneacc-popover" class="laneacc-popover" hidden></div>
+                </div>
+                <div id="laneacc-error" class="laneacc-error" hidden></div>
+            </div>
+
+            <div class="combined-separator" id="sep-pattern" hidden>Pattern</div>
             <ol id="pattern-clusters" class="cluster-bars">
                 <li class="cluster-item empty">No data</li>
             </ol>
 
-            <div class="full-separator" id="sep-etterna" hidden>Etterna | Overall: --</div>
+            <div class="combined-separator" id="sep-etterna" hidden>Etterna | Overall: --</div>
             <ol id="ett-skill-bars" class="ett-skill-bars" hidden>
                 <li class="ett-skill-item empty">No data</li>
             </ol>
 
-            <div class="full-separator" id="sep-pp" hidden>ReworkPP</div>
+            <div class="combined-separator" id="sep-pp" hidden>ReworkPP</div>
             <ol id="pp-bars" class="pp-bars" hidden>
                 <li class="pp-item empty">No data</li>
             </ol>
 
-            <div class="full-separator" id="sep-graph" hidden>Graph</div>
+            <div class="combined-separator" id="sep-graph" hidden>Graph</div>
             <div class="body-graph-wrap" id="body-graph-wrap" hidden>
                 <svg id="body-graph" class="body-graph" viewBox="0 0 260 86" preserveAspectRatio="xMidYMid meet" aria-label="Body difficulty graph" role="img">
                     <defs>
@@ -86,8 +123,13 @@
                     <path id="body-graph-fill-play" class="star-graph-fill-play" d="" clip-path="url(#body-graph-play-clip)"></path>
                     <path id="body-graph-line" class="star-graph-line" d=""></path>
                     <g id="body-graph-pause-markers"></g>
-                    <line id="body-graph-cursor" class="star-graph-cursor" x1="0" y1="0" x2="0" y2="86" hidden></line>
-                    <circle id="body-graph-cursor-dot" class="star-graph-cursor-dot" cx="0" cy="0" r="2.8" hidden></circle>
+                    <g class="graph-section-overlay is-hidden" aria-hidden="true">
+                        <rect class="graph-section-mask" x="0" y="0" width="0" height="0"></rect>
+                        <line class="graph-section-edge graph-section-edge-start" x1="0" x2="0" y1="0" y2="0"></line>
+                        <line class="graph-section-edge graph-section-edge-end" x1="0" x2="0" y1="0" y2="0"></line>
+                    </g>
+                    <line id="body-graph-cursor" class="star-graph-cursor" x1="0" y1="0" x2="0" y2="86"></line>
+                    <circle id="body-graph-cursor-dot" class="star-graph-cursor-dot" cx="0" cy="0" r="2.8"></circle>
                 </svg>
                 <div id="body-graph-error" class="star-graph-error" hidden>Graph unavailable</div>
             </div>
@@ -102,6 +144,13 @@
                 <div id="overlay-spinner" class="overlay-spinner" aria-hidden="true"></div>
                 <p id="overlay-title" class="overlay-title">Loading</p>
                 <pre id="overlay-message" class="overlay-message"></pre>
+            </div>
+
+            <div id="feedback-strip" class="feedback-strip" role="group" aria-label="Difficulty feedback" hidden>
+                <span class="feedback-countdown" aria-hidden="true"></span>
+                <span class="feedback-question"></span>
+                <div class="feedback-actions"></div>
+                <span class="feedback-hint" hidden></span>
             </div>
         </section>
     </main>

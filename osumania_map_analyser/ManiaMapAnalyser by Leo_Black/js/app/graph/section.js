@@ -1,0 +1,419 @@
+// 图表选区交互（Graph Section Analysis）：双击进入待命态 → 拖拽画区间 → 按区间重算。
+//
+// 只在桌面壳里工作（isShellRuntime：24061 端口或壳追加的 #mma-shell）。浏览器 / OBS
+// 模式下 initGraphSection() 直接返回：不挂监听、不改 DOM、行为与改动前完全一致。
+//
+// 三条时间轴（别混）：
+//   显示轴 = 原始时间 / speedRate —— state.graphSeries / rework.graph.times / songTimeMs 都在这个域；
+//   物理轴 = .osu 文件里的毫秒 —— 切片器与 TimingPoints 在这个域；
+//   真实播放轴 = 显示轴（DT/HT 已在 songTimeMs 折算）。
+// 选区同时存「相对绘图带的 u 比例」（画遮罩用）与「物理毫秒」（切片用）：
+// 速率变化时全谱曲线等比缩放、像素形状不变 ⇒ u 不变；物理时间也与速率无关。
+//
+// 依赖约束：本模块只碰 DOM 与 state，不碰管线；重算通过 scheduleRecompute 派发。
+
+import {
+    GRAPH_PADDING_X,
+    GRAPH_VIEWBOX_HEIGHT,
+    GRAPH_VIEWBOX_WIDTH,
+    forEachGraphView,
+    state,
+} from "../core/appContext.js";
+import { clientXToViewBoxX } from "./math.js";
+import { setGraphClearedHandler, setGraphRenderedHandler } from "./index.js";
+import { isShellRuntime } from "../feedback/feedbackSpec.js";
+import { scheduleRecompute } from "../core/scheduler.js";
+import { paintSectionOverlay } from "./sectionOverlay.js";
+
+const PLOT_WIDTH = GRAPH_VIEWBOX_WIDTH - 2 * GRAPH_PADDING_X;
+const MIN_DRAG_VIEWBOX = 1.5;
+const COMMIT_SUPPRESS_DBLCLICK_MS = 250;
+const ARM_DEBOUNCE_MS = 350;
+
+let mode = "idle"; // "idle" | "armed"
+let selection = null; // { u0, u1, startMs, endMs, rateAtSelection }
+let drag = null; // { pointerId, anchorU, moved, prevSelection, view, axis }
+// identity → 全谱原文（LRU，最多 4 张）：换图后再切回来时结果缓存命中、拿不到原文，仍要能切片。
+// 键 = `contentKey`（hash > folder-qualified path > id > meta），值附带 `metaKey` 供读取时校验：
+// 即使某条记录被错误写入，另一张图的请求也会因 metaKey 不符而拒绝，不会把旧图原文当成新图。
+const fullChartTexts = new Map();
+const MAX_STORED_TEXTS = 4;
+let lastCommitAt = 0;
+// 上一次渲染的图表时间轴：换图/换难度后新曲线的时间轴必然变化，旧的
+// armed 态/选区不能带进新坐标系（否则双击会直接走「再次双击退出」分支）。
+let lastGraphAxisKey = "";
+
+const clamp01 = (value) => Math.min(1, Math.max(0, value));
+
+/** 读 SVG 的 preserveAspectRatio（两图不同：header=none，body=xMidYMid meet）。 */
+function parsePreserveAspectRatio(svgEl) {
+    const tokens = String(svgEl.getAttribute("preserveAspectRatio") || "xMidYMid meet")
+        .trim()
+        .split(/\s+/);
+    return {
+        align: tokens[0] || "xMidYMid",
+        slice: tokens[1] === "slice" ? "slice" : "meet",
+    };
+}
+
+/** 当前图表轴（显示轴 + 当前速率）。图未渲染 / 跨度为 0 时返回 null。 */
+function getAxis() {
+    const series = state.graphSeries;
+    if (!series) {
+        return null;
+    }
+    const minTime = Number(series.minTime);
+    const maxTime = Number(series.maxTime);
+    if (!Number.isFinite(minTime) || !Number.isFinite(maxTime) || !(maxTime - minTime > 1)) {
+        return null;
+    }
+    // 四个源的图表倍速都等于 state.speedRate（analysisRate 只在桥帧写且与它同值），
+    // 见 docs/features/graph-section-analysis.md §4.1 自查表。
+    const rate = Number.isFinite(state.speedRate) && state.speedRate > 0 ? Number(state.speedRate) : 1;
+    return { minTime, maxTime, rate };
+}
+
+/** 客户端 X → 绘图带比例 u ∈ [0,1]；不可用时返回 null。 */
+function pointerU(view, clientX) {
+    if (!view?.svgEl || !view?.wrapEl) {
+        return null;
+    }
+    const rect = view.svgEl.getBoundingClientRect();
+    if (!rect || rect.width <= 0 || rect.height <= 0) {
+        return null;
+    }
+    const par = parsePreserveAspectRatio(view.svgEl);
+    const viewBoxX = clientXToViewBoxX({
+        clientX,
+        rect,
+        viewBoxWidth: GRAPH_VIEWBOX_WIDTH,
+        viewBoxHeight: GRAPH_VIEWBOX_HEIGHT,
+        parAlign: par.align,
+        parSlice: par.slice,
+    });
+    if (viewBoxX == null) {
+        return null;
+    }
+    return clamp01((viewBoxX - GRAPH_PADDING_X) / PLOT_WIDTH);
+}
+
+function makeSelection(uA, uB, axis) {
+    const u0 = Math.min(uA, uB);
+    const u1 = Math.max(uA, uB);
+    const toPhysical = (u) => (axis.minTime + u * (axis.maxTime - axis.minTime)) * axis.rate;
+    return {
+        u0,
+        u1,
+        startMs: toPhysical(u0),
+        endMs: toPhysical(u1),
+        rateAtSelection: axis.rate,
+    };
+}
+
+function isViewVisible(view) {
+    if (!view?.isEnabled() || !view?.wrapEl) {
+        return false;
+    }
+    const rect = view.wrapEl.getBoundingClientRect();
+    return Boolean(rect && rect.width > 0 && rect.height > 0);
+}
+
+function canArm() {
+    if (!isShellRuntime() || state.isInPlayState) {
+        return false;
+    }
+    // 外部源（Malody 桥 / Malody 4）的游玩位与 osu 的 isInPlayState 分开维护。
+    if (state.malodyPlaying || state.malody4Playing) {
+        return false;
+    }
+    if (String(state.clientStateName || "") === "resultscreen") {
+        return false;
+    }
+    if (!getAxis()) {
+        return false;
+    }
+    let visible = false;
+    forEachGraphView((view) => {
+        if (isViewVisible(view)) {
+            visible = true;
+        }
+    });
+    return visible;
+}
+
+function paint() {
+    paintSectionOverlay({ mode, selection });
+}
+
+function commitSelection() {
+    lastCommitAt = Date.now();
+    state.pendingChangeKind = "section";
+    scheduleRecompute("graph section", true);
+}
+
+let lastArmAt = 0;
+
+function onDblClick(event) {
+    if (Date.now() - lastCommitAt < COMMIT_SUPPRESS_DBLCLICK_MS || drag) {
+        return;
+    }
+    if (mode === "idle") {
+        if (!canArm()) {
+            return;
+        }
+        event.preventDefault();
+        mode = "armed";
+        lastArmAt = Date.now();
+        paint();
+        return;
+    }
+    if (Date.now() - lastArmAt < ARM_DEBOUNCE_MS) {
+        return;
+    }
+    event.preventDefault();
+    const hadSelection = selection != null;
+    clearSection("toggle", { recompute: hadSelection });
+}
+
+function onPointerDown(event, view) {
+    if (mode !== "armed" || event.button !== 0) {
+        return;
+    }
+    const axis = getAxis();
+    const u = pointerU(view, event.clientX);
+    if (!axis || u == null) {
+        return;
+    }
+    drag = {
+        pointerId: event.pointerId,
+        anchorU: u,
+        moved: false,
+        prevSelection: selection,
+        view,
+        axis,
+    };
+    try {
+        view.wrapEl.setPointerCapture(event.pointerId);
+    } catch {
+        // 指针捕获失败不阻断（release 时同样容错）。
+    }
+    event.preventDefault();
+}
+
+function onPointerMove(event) {
+    if (!drag || event.pointerId !== drag.pointerId) {
+        return;
+    }
+    const u = pointerU(drag.view, event.clientX);
+    if (u == null) {
+        return;
+    }
+    if (!drag.moved && Math.abs(u - drag.anchorU) * PLOT_WIDTH < MIN_DRAG_VIEWBOX) {
+        return;
+    }
+    drag.moved = true;
+    selection = makeSelection(drag.anchorU, u, drag.axis);
+    paint();
+}
+
+function releaseCapture(view, pointerId) {
+    try {
+        if (view?.wrapEl?.hasPointerCapture?.(pointerId)) {
+            view.wrapEl.releasePointerCapture(pointerId);
+        }
+    } catch {
+        // 忽略：指针已释放 / 元素已移除。
+    }
+}
+
+function onPointerUp(event) {
+    if (!drag || event.pointerId !== drag.pointerId) {
+        return;
+    }
+    const { moved, prevSelection, view, pointerId } = drag;
+    drag = null;
+    releaseCapture(view, pointerId);
+    if (!moved) {
+        // 纯点击：还原上一次选区，不跑分析（双击进入/退出由 dblclick 处理）。
+        selection = prevSelection;
+        paint();
+        return;
+    }
+    commitSelection();
+}
+
+function onPointerCancel(event) {
+    if (!drag || (event.pointerId != null && event.pointerId !== drag.pointerId)) {
+        return;
+    }
+    const { view, pointerId, prevSelection } = drag;
+    drag = null;
+    releaseCapture(view, pointerId);
+    selection = prevSelection;
+    paint();
+}
+
+function bindView(view) {
+    const wrap = view.wrapEl;
+    if (!wrap || wrap.dataset.sectionBound === "1") {
+        return;
+    }
+    wrap.dataset.sectionBound = "1";
+    wrap.addEventListener("dblclick", onDblClick);
+    wrap.addEventListener("pointerdown", (event) => onPointerDown(event, view));
+    wrap.addEventListener("pointermove", onPointerMove);
+    wrap.addEventListener("pointerup", onPointerUp);
+    wrap.addEventListener("pointercancel", onPointerCancel);
+    wrap.addEventListener("lostpointercapture", onPointerCancel);
+}
+
+/** 初始化（幂等）。非壳环境直接返回，不挂任何监听。 */
+export function initGraphSection() {
+    if (!isShellRuntime()) {
+        return;
+    }
+    setGraphClearedHandler(handleGraphCleared);
+    setGraphRenderedHandler(handleGraphRendered);
+    forEachGraphView(bindView);
+}
+
+/**
+ * 全谱原文（供区间跑批切片）；contentKey 不匹配或为空时返回 null。
+ *
+ * `contentKey` 必须由调用方在**请求开始时**快照传入：分析途中切图时，
+ * `state.lastBeatmapIdentity` 已经指向下一张图，再用它读写会把上一张
+ * 图的原文写到下一张图的键下，后续所有重算都会拿到旧谱面。
+ * `metaKey` 非空时还要与记录内保存的值一致（防止 path/id 键碰撞）。
+ */
+export function getFullChartText(contentKey = "", metaKey = "") {
+    const key = String(contentKey || "");
+    if (!key) {
+        return null;
+    }
+    const entry = fullChartTexts.get(key);
+    if (!entry || typeof entry.text !== "string" || entry.text.length === 0) {
+        return null;
+    }
+    const expectedMeta = String(metaKey || "").trim();
+    if (expectedMeta && entry.metaKey !== expectedMeta) {
+        return null;
+    }
+    return entry.text;
+}
+
+/** 全谱跑批成功后写入原文（只在非区间跑批时调用；浏览器模式不占用内存）。 */
+export function rememberFullChartText(rawText, contentKey = "", metaKey = "") {
+    if (!isShellRuntime()) {
+        return;
+    }
+    const key = String(contentKey || "");
+    const text = typeof rawText === "string" ? rawText : "";
+    // meta: 键只有标题元数据，碰撞风险高（同标题不同谱面共用一键）；不写入原文 LRU。
+    if (!key || !text || key.startsWith("meta:")) {
+        return;
+    }
+    // 按 contentKey 存最近 MAX_STORED_TEXTS 张谱面：换图后再切回来（命中结果缓存、拿不到原文）
+    // 仍能切片；只留一张会在「切图来回」后稳定触发 text-missing。
+    fullChartTexts.delete(key);
+    fullChartTexts.set(key, { text, metaKey: String(metaKey || "").trim() });
+    while (fullChartTexts.size > MAX_STORED_TEXTS) {
+        fullChartTexts.delete(fullChartTexts.keys().next().value);
+    }
+}
+
+/** 清空原文 LRU（结果缓存失效/清卡时同一路径调用）。 */
+export function clearFullChartTexts() {
+    fullChartTexts.clear();
+}
+
+/** 当前生效的切片区间（物理谱面毫秒）；未 armed / 无选区时返回 null。 */
+export function getSectionRange() {
+    if (mode !== "armed" || !selection) {
+        return null;
+    }
+    const startMs = Number(selection.startMs);
+    const endMs = Number(selection.endMs);
+    if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) {
+        return null;
+    }
+    return { startMs: Math.min(startMs, endMs), endMs: Math.max(startMs, endMs) };
+}
+
+/**
+ * 图表被清空时的回调（graph.js `setGraphClearedHandler` 注册）。
+ * 选区依赖全谱曲线坐标系：曲线没了必须一起复位，否则会留下「空白图 + 遮罩」的幽灵选区。
+ */
+export function handleGraphCleared() {
+    lastGraphAxisKey = "";
+    clearSection("graph-cleared", { recompute: false });
+}
+
+/** 新曲线渲染：时间轴变了（换图/换难度）就复位旧的 armed/选区。 */
+function handleGraphRendered(series) {
+    const key = `${state.lastBeatmapIdentity || ""}|${Math.round(series?.minTime ?? 0)}|${Math.round(series?.maxTime ?? 0)}`;
+    if (lastGraphAxisKey && key !== lastGraphAxisKey) {
+        clearSection("graph-axis", { recompute: false });
+    }
+    lastGraphAxisKey = key;
+}
+
+/**
+ * 复位选区。
+ * @param {string} reason 诊断用原因
+ * @param {{recompute?: boolean}} [options] recompute=true 时派发一次全谱重算
+ * @returns {boolean} 是否真的复位了（未 armed 且无选区时为 no-op）
+ */
+export function clearSection(reason, options = {}) {
+    const wasActive = mode === "armed" || selection != null || drag != null;
+    if (!wasActive) {
+        return false;
+    }
+    if (drag) {
+        releaseCapture(drag.view, drag.pointerId);
+    }
+    mode = "idle";
+    selection = null;
+    drag = null;
+    paint();
+    if (options.recompute) {
+        state.pendingChangeKind = "section";
+        scheduleRecompute(`section cleared (${reason})`, true);
+    }
+    return true;
+}
+
+/**
+ * 图表全部不可见时退出选区并清空遮罩（Tab 临时切换 / Combined 模块变化 /
+ * contentBar 设置变更把 Graph 藏起来的统一复位口）。
+ *
+ * 以图表视图的真实可见性为准（而不是 contentBarShows）：diffText=Graph 的
+ * 头部图表也算可见——那种情况下选区仍可交互，不该被复位。recompute 恒为
+ * false：每个调用方（Tab 点击 / 设置应用 / Combined 切换）各自已带重算路径，
+ * 选区清除后的那次重算自然回到全谱口径。
+ *
+ * @param {string} reason
+ * @returns {boolean} 是否真的复位了
+ */
+export function clearSectionIfGraphHidden(reason) {
+    if (mode === "idle" && selection == null && drag == null) {
+        return false;
+    }
+    let anyVisible = false;
+    forEachGraphView((view) => {
+        if (isViewVisible(view)) {
+            anyVisible = true;
+        }
+    });
+    if (anyVisible) {
+        return false;
+    }
+    return clearSection(reason, { recompute: false });
+}
+
+/** 分析完成后刷新遮罩主题色（当前卡片主题色）与胶囊时间。 */
+export function notifySectionAnalysis() {
+    if (!isShellRuntime()) {
+        return;
+    }
+    paint();
+}

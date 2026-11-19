@@ -16,15 +16,19 @@
 
 ## 2. 如何打开预设管理器？
 
+### 使用 tosu
+
 预设管理器是一个独立的网页页面，位于插件目录内：
 
-1. 在浏览器地址栏输入：`http://localhost:24050/<插件目录名>/presets.html`
-   - 例如插件目录名为 `ManiaMapAnalyser by Leo_Black`，则访问 `http://localhost:24050/ManiaMapAnalyser%20by%20Leo_Black/presets.html`
-   - 下载下来的目录名可能不同，请根据实际情况修改。一般情况为 `ManiaMapAnalyser.by.Leo_Black`，则访问 `http://localhost:24050/ManiaMapAnalyser.by.Leo_Black/presets.html`。
-   - 如果修改过端口，把 `24050` 换成你的端口
-2. 页面加载后，你看到的就是预设管理器。
+- 在浏览器地址栏输入：`http://localhost:24050/<插件目录名>/presets.html`
+- 假设插件目录名为 `ManiaMapAnalyser by Leo_Black`，则访问 `http://localhost:24050/ManiaMapAnalyser%20by%20Leo_Black/presets.html`
+- 下载下来的目录名可能不同，请根据实际情况修改。
+- 如果修改过端口，把 `24050` 换成你的端口
 
-> 提示：这个页面只是管理工具，不影响游戏内显示的叠加界面。预设应用后，游戏内的显示会立即更新（需要 tosu 正在运行）。
+### 使用桌面壳
+
+- 按 `Ctrl+Shift+S` 打开设置页面。往下翻即可找到，或点击上方导航栏。
+- 也可以直接在浏览器打开 `http://127.0.0.1:24061/settings.html`
 
 ## 3. 界面总览
 
@@ -34,9 +38,9 @@
 - **左侧列表**：所有预设的列表，分为 **System**（系统预设）和 **My Presets**（我的预设）两组。
 - **右侧编辑区**：上方是 **Preset Info**（预设信息），下方是**设置表单**（所有可配置项，每项前面有一个复选框）。
 
-> 提示：刚打开或刷新页面时，My Presets 会先显示"Loading presets…"，等 tosu 的设置数据到达后才会显示真实的预设列表。
+> 提示：刚打开或刷新页面时，My Presets 会先显示"Loading presets…"，等 tosu 的设置数据到达后才会显示预设列表。
 
-## 4. 左侧列表详解
+## 4. 左侧列表
 
 ### System（系统预设）
 
@@ -48,7 +52,7 @@
   - **ForOsuPlayer / ForEtternaPlayer / ForInterludePlayer**：面向不同玩家的推荐配置。
   - **PatternFocus / FullOverview / VibroPlayer / JackPlayer**：面向不同游玩场景。
   - **TheLimitDoesNotExist / DanielLike**：面向高难与特殊玩法。
-- **LastSavedPreset**（只读行）：它不是可应用的预设，而是"自动跟随"标记——选择它之后，你在 tosu 设置页手动修改的设置会自动保存到这里，永远保留你最后一次的手动配置。
+- **LastSavedPreset**（只读行）：它不是可应用的预设，而是"自动跟随"标记——选择它之后，你在 tosu 设置页手动修改的设置会自动保存到这里，永远保留你最后一次的手动配置。（这一行只在 tosu 的 `presets.html` 出现；桌面壳的设置窗口**离线时不显示**它。）
 
 每个预设行都有按钮：
 
@@ -66,7 +70,7 @@
 
 你创建的预设都在这里。首次使用时会自动创建 **Custom1 / Custom2 / Custom3** 三个固定槽位（它们不可以重命名或删除，但可以应用和覆盖保存内容）。之后你可以创建任意多个自定义预设。
 
-## 5. 右侧编辑区详解
+## 5. 右侧编辑区
 
 ### Preset Info（预设信息）
 
@@ -90,7 +94,9 @@
 
 表单值会跟随 tosu 的实时广播自动刷新（正在输入的那一项除外）。
 
-## 6. 顶部操作栏逐个按钮讲解
+**桌面壳专属设置**：在桌面壳里打开管理器时，表单最顶部（“模块自定义”之前）会多出“桌面壳专属”组，包含**组合模式开关**与**组合模块顺序**（逗号分隔，如 `Graph, Pattern`）。勾选后预设会携带 `combinedMode`，应用时同时写入卡片与 `mma-shell-config.json`。浏览器 / tosu 页面不支持这些字段：管理器不显示该组；导入携带它们的预设文件时会自动剥离并在结果提示里注明。
+
+## 6. 顶部操作栏
 
 | 按钮 | 作用 | 注意事项 |
 | --- | --- | --- |
@@ -102,7 +108,7 @@
 | **Import** | 导入 .json 预设文件 | 选择文件后自动导入；格式错误会提示 |
 | **Guide** | 在新窗口打开这份新手教程 | 随时查阅，不离开管理器 |
 
-### 推荐工作流程
+### 推荐使用流程
 
 1. **创建预设**：先点击 **New**，随后在表单里调整设置（勾选想要的项）→ 填写 Preset Info → 点 **Save**。
 2. **应用预设**：在左侧列表点某行的 **Apply**（或编辑后点 **Apply Checked**）。
@@ -115,7 +121,7 @@
 A: 只变预设里包含（勾选）的设置。自定义预设只保存你勾选的字段；系统预设保存它设计好的字段；未包含的设置保持当前值。
 
 **Q: 预设存在哪里？换电脑会丢吗？**
-A: 自定义预设存在 tosu 的设置文件里（`presetStorage` 设置项），随 tosu 的 settings 目录一起保存。换电脑时拷贝 tosu 的 `settings` 目录即可带走。也可以随时用 **Export All** 导出备份。
+A: 用 tosu 时，自定义预设存在 tosu 的设置文件里（`presetStorage` 设置项），随 tosu 的 settings 目录一起保存，换电脑时拷贝 tosu 的 `settings` 目录即可带走。**离线壳模式**下则存在壳 exe 旁的 `mma-settings.json` 里（同一个 `presetStorage` 键），与 tosu 那份是两份独立的库。两种情况都可以随时用 **Export All** 导出备份。
 
 **Q: 为什么游戏内显示没变化？**
 A: 请确认 tosu 正在运行、且浏览器访问的端口与 tosu 一致。应用成功后页面右上角会弹出绿色提示。
@@ -145,15 +151,19 @@ The plugin ships with 10 built-in presets (read-only system presets). You can al
 
 ## 2. How do I open the Presets Manager?
 
-The manager is a standalone page inside the plugin folder:
+### Using tosu
 
-1. Open your browser and go to: `http://localhost:24050/<plugin folder name>/presets.html`
-   - E.g. `http://localhost:24050/ManiaMapAnalyser%20by%20Leo_Black/presets.html`
-   - The downloaded folder name may differ; adjust accordingly. Usually it is `ManiaMapAnalyser.by.Leo_Black`, so visit `http://localhost:24050/ManiaMapAnalyser.by.Leo_Black/presets.html`.
-   - If you changed the port, replace `24050` with your port.
-2. The page that loads is the Presets Manager.
+The Presets Manager is a standalone web page located inside the plugin directory:
 
-> Note: this page is only a management tool. Applying a preset updates the in-game overlay immediately (tosu must be running).
+- Enter in your browser address bar: `http://localhost:24050/<plugin folder name>/presets.html`
+- If the plugin folder name is `ManiaMapAnalyser by Leo_Black`, visit `http://localhost:24050/ManiaMapAnalyser%20by%20Leo_Black/presets.html`
+- The downloaded folder name may differ; adjust accordingly.
+- If you changed the port, replace `24050` with your port.
+
+### Using the desktop shell
+
+- Press `Ctrl+Shift+S` to open the settings page. Scroll down to find presets, or click Presets in the top navigation bar.
+- You can also open `http://127.0.0.1:24061/settings.html` directly in your browser.
 
 ## 3. Interface overview
 
@@ -165,7 +175,7 @@ The manager has three parts:
 
 > Note: right after opening or refreshing the page, My Presets shows "Loading presets…" until tosu's settings data arrives.
 
-## 4. The list in detail
+## 4. Left list
 
 ### System presets
 
@@ -173,7 +183,7 @@ Built into the plugin and **cannot be deleted**.
 
 - **Default**: factory reset — applies the plugin's default values to everything.
 - 10 built-in presets, e.g. **Mini** (star rating only), **ForOsuPlayer / ForEtternaPlayer / ForInterludePlayer** (recommended configs per player type), **PatternFocus / FullOverview / VibroPlayer / JackPlayer** (per play style), **TheLimitDoesNotExist / DanielLike** (high-difficulty / niche).
-- **LastSavedPreset** (read-only row): not an applicable preset but a "follow mode" marker — while selected, your manual changes in the tosu settings page are saved into it automatically, keeping your latest manual configuration.
+- **LastSavedPreset** (read-only row): not an applicable preset but a "follow mode" marker — while selected, your manual changes in the tosu settings page are saved into it automatically, keeping your latest manual configuration. (This row only exists on tosu's `presets.html`; the shell's settings window **does not show it offline**.)
 
 Buttons on each row:
 
@@ -191,7 +201,7 @@ The **SYSTEM** badge marks system presets; a `v1`-style label next to the name i
 
 Your own presets. On first use the plugin auto-creates three fixed slots **Custom1 / Custom2 / Custom3** (they cannot be renamed or deleted, but their content can be overwritten). After that you can create unlimited custom presets.
 
-## 5. The editor in detail
+## 5. Right editor area
 
 ### Preset Info
 
@@ -213,7 +223,9 @@ This is the "partial preset" feature: check only what you want to manage.
 
 Form values auto-refresh from tosu's live broadcast (except the field you are typing in).
 
-## 6. Action bar buttons, one by one
+**Desktop-shell-only settings**: when the manager is opened inside the desktop shell, an extra "Desktop Shell Only" group appears at the very top of the form (before "Modules Customization") with **Combined mode** and **Combined sections order** (comma-separated, e.g. `Graph, Pattern`). Checked rows make the preset carry `combinedMode`; applying it updates both the card and `mma-shell-config.json`. Browser / tosu pages do not support these fields: the group is hidden there, and importing a preset file that carries them strips them automatically (the import notice says so).
+
+## 6. Top action bar
 
 | Button | What it does | Notes |
 | --- | --- | --- |
@@ -238,7 +250,7 @@ Form values auto-refresh from tosu's live broadcast (except the field you are ty
 A: Only the settings included (checked) in the preset. Custom presets store only what you checked; system presets store their designed fields; anything not included keeps its current value.
 
 **Q: Where are presets stored? Will I lose them on a new PC?**
-A: Custom presets live in tosu's settings file (the `presetStorage` setting), inside tosu's `settings` folder — copy that folder to move them. Or use **Export All** anytime for a backup.
+A: With tosu, custom presets live in tosu's settings file (the `presetStorage` setting) inside tosu's `settings` folder — copy that folder to move them. In **offline shell mode** they live in `mma-settings.json` next to the shell exe (same `presetStorage` key), a library independent from tosu's. Either way you can use **Export All** anytime for a backup.
 
 **Q: Nothing changed in-game?**
 A: Make sure tosu is running and the port matches. A green toast appears in the top-right corner after a successful apply.

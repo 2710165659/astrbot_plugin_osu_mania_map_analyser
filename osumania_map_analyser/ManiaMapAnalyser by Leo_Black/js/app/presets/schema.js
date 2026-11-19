@@ -9,8 +9,8 @@
  * settings.json + settings.js needs NO change here.
  */
 
-import * as settingsModule from "../settings.js";
-import { state } from "../appContext.js";
+import * as settingsModule from "../core/settings.js";
+import { state } from "../core/appContext.js";
 
 // Keys whose apply function name deviates from the convention.
 const APPLIER_NAME_OVERRIDES = {
@@ -25,7 +25,6 @@ const GETTER_OVERRIDES = {
     srText: (s) => s.userSrText,
     diffText: (s) => s.userDiffText,
     enablePauseDetection: (s) => s.pauseDetectionEnabled,
-    pauseDetectionThreshold: (s) => String(s.pauseDetectionThresholdMs),
     VibroDetection: (s) => s.vibroDetection,
 };
 

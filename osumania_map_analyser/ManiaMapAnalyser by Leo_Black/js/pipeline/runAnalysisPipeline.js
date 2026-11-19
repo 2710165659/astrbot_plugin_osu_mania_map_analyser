@@ -20,12 +20,15 @@ import { runSunnyWindowEstimatorFromText } from "../estimator/sunnyWindowEstimat
 import { runDanielEstimatorFromText } from "../estimator/danielEstimator.js";
 import { runAzusaEstimatorFromText } from "../estimator/azusaEstimator.js";
 import { runRoxyEstimatorFromText } from "../estimator/roxyEstimator.js";
+import { runPolarisEstimatorFromText } from "../estimator/polarisEstimator.js";
+import { runXdc1EstimatorFromText } from "../estimator/xdc1Estimator.js";
+import { runProj7kEstimatorFromText } from "../estimator/proj7kEstimator.js";
 import { runMixedEstimatorFromText } from "../estimator/mixedEstimator.js";
 import { analyzePatternFromText } from "../patterns/service.js";
 import { analyzeEtternaFromText, DEFAULT_SCORE_GOAL as ETT_DEFAULT_SCORE_GOAL } from "../ett/index.js";
 import { calculateInterludeStar } from "../interlude/index.js";
 
-const NORMALIZATION_ALGORITHMS = new Set(["Azusa", "Roxy", "Mixed"]);
+const NORMALIZATION_ALGORITHMS = new Set(["Azusa", "Roxy", "Mixed", "XDC1"]);
 
 // Sunny 结果的 numericDifficulty 恒为 null；Azusa/Roxy 无效回退后的 Sunny 结果同样如此。
 // 允许 null 通过可避免主线程冗余重算（与 analysis.js 旧 isValidEstimatorResult 一致）。
@@ -69,12 +72,19 @@ function sanitizePatternResult(result) {
     };
 }
 
+function splitEstDiffParts(value) {
+    return String(value ?? "")
+        .split("||")
+        .map((part) => part.trim())
+        .filter((part) => part.length > 0);
+}
+
 /**
  * 运行完整分析管线（异步：ett WASM 与 interlude 均为异步）。
  *
  * @param {object} input
  * @param {string} input.rawText  .osu 文件文本
- * @param {string} input.estimatorAlgorithm  Sunny / Daniel / Azusa / Roxy / Mixed / Companella
+ * @param {string} input.estimatorAlgorithm  Sunny / Daniel / Azusa / Roxy / Polaris / XDC1 / Proj7k / Mixed / Companella
  * @param {object} input.options  显式传入的估算选项（禁止读 state）：speedRate, odFlag, cvtFlag,
  *   withGraph, forceSunnyReferenceHo, forceSunnyWindow, enableAnalyzeLN,
  *   enableAlwaysShowLNDifficulty, display6kLevel, extendedEstimationRange,
@@ -106,7 +116,46 @@ export async function runAnalysisPipeline({ rawText, estimatorAlgorithm, options
         metadata: parsedData.metaData || {},
         lnRatio: Number(parsedData.lnRatio) || 0,
         columnCount: Number(parsedData.columnCount) || 0,
+        // OD 是反馈签名的客观字段：必须来自本地 .osu 解析（-1 = 未解析到）。
+        od: Number(parsedData.od),
     };
+
+    // ── 马拉松时长修正：估算器内嵌前置（按需）──────────────────────────
+    // 修正由 Azusa/Roxy 估算器本体应用（options.marathonCorrection 注入
+    // { durationS, ettValues }）。durationS 恒可同步计算（noteStarts 首尾差，
+    // 未按速率缩放）；ettValues 需 WASM（异步）→ 仅在可能触发修正的候选上
+    // （>300s 且 4K 且算法 ∈ {Azusa, Roxy, Mixed}）提前计算一次 Ett，并复用于
+    // 段 9/10（不重复计算，perf 约束见 docs/breakings/2026-08-09-perf-analysis-pipeline.md）。
+    const marathonDurationS = (() => {
+        const starts = parsedData.noteStarts;
+        if (!Array.isArray(starts) || starts.length < 2) return 0;
+        return (Math.max(...starts) - Math.min(...starts)) / 1000;
+    })();
+    const isMarathonRcCandidate = estimatorAlgorithm === "Azusa"
+        || estimatorAlgorithm === "Roxy"
+        || estimatorAlgorithm === "Mixed";
+    let marathonEttReuse = null; // { result?: object, error?: string }
+    if (isMarathonRcCandidate && parsedSummary.columnCount === 4 && marathonDurationS > 300) {
+        try {
+            marathonEttReuse = { result: await analyzeEtternaFromText(rawText, {
+                musicRate: options.speedRate ?? 1,
+                scoreGoal: ETT_DEFAULT_SCORE_GOAL,
+                cvtFlag: options.cvtFlag,
+                etternaVersion: options.etternaVersion,
+            }) };
+        } catch (err) {
+            marathonEttReuse = { error: String(err?.message || err) };
+        }
+        if (marathonEttReuse.result) {
+            options = {
+                ...options,
+                marathonCorrection: {
+                    durationS: marathonDurationS,
+                    ettValues: marathonEttReuse.result.values,
+                },
+            };
+        }
+    }
 
     // 归一化星数复用决策（决策表见 .omo/evidence/task-11-pipeline.txt）：
     // 仅当算法内部 Sunny 与归一化调用（runSunnyEstimatorFromText(rawText, options)）
@@ -154,6 +203,30 @@ export async function runAnalysisPipeline({ rawText, estimatorAlgorithm, options
             selectedRework = runSunnyEstimatorFromText(rawText, options, parser);
             actualEstimatorAlgorithm = "Sunny";
         }
+    } else if (estimatorAlgorithm === "Polaris") {
+        // Polaris（表修正：7K 的 RC+LN、4K 的 LN）：star 恒为 Sunny 原始 sr（生效时）——
+        // 其他键数与 cvt 旗标下由估算器内部回退 Sunny（actualEstimatorAlgorithm = "Sunny"），
+        // 不进 NORMALIZATION_ALGORITHMS。
+        selectedRework = runPolarisEstimatorFromText(rawText, options, parser);
+        actualEstimatorAlgorithm = selectedRework?.actualEstimatorAlgorithm || actualEstimatorAlgorithm;
+        if (!isValidResult(selectedRework)) {
+            selectedRework = runSunnyEstimatorFromText(rawText, options, parser);
+            actualEstimatorAlgorithm = "Sunny";
+        }
+    } else if (estimatorAlgorithm === "XDC1") {
+        // XDC1（独立 4K 数值估算器）：不支持的谱面由估算器返回
+        // `unsupported: true` + "Unsupported: ..." 文案，不切换到 Sunny。
+        selectedRework = runXdc1EstimatorFromText(rawText, options, parser);
+        actualEstimatorAlgorithm = selectedRework?.actualEstimatorAlgorithm || "XDC1";
+    } else if (estimatorAlgorithm === "Proj7k") {
+        // Proj7k（proj7k 7K 物理引擎）：star / 标签 / numeric 都来自引擎自己的星数（与 Daniel 同，不进
+        // NORMALIZATION_ALGORITHMS）；Sunny sr 在 sunnyStar。非 7K 与 cvt 旗标由估算器内部回退 Sunny。
+        selectedRework = runProj7kEstimatorFromText(rawText, options, parser);
+        actualEstimatorAlgorithm = selectedRework?.actualEstimatorAlgorithm || actualEstimatorAlgorithm;
+        if (!isValidResult(selectedRework)) {
+            selectedRework = runSunnyEstimatorFromText(rawText, options, parser);
+            actualEstimatorAlgorithm = "Sunny";
+        }
     } else if (estimatorAlgorithm === "Mixed") {
         const mixedOpts = sharedSunnyResult
             ? { ...options, precomputedSunnyResult: sharedSunnyResult }
@@ -179,7 +252,7 @@ export async function runAnalysisPipeline({ rawText, estimatorAlgorithm, options
         eligible: Number.isFinite(vibroStar) && vibroStar > 5.0,
     };
 
-    // 4. 归一化：Azusa/Roxy/Mixed 未回退时 star 统一为 Sunny 原始 sr（星数胶囊恒显 Sunny 口径；
+    // 4. 归一化：Azusa/Roxy/Mixed/XDC1 未回退时 star 统一为 Sunny 原始 sr（星数胶囊恒显 Sunny 口径；
     //    Daniel 独立算法排除；Companella/Sunny 本就是 Sunny sr）。
     //    保留 sunnyResult 对象引用（含 ppMetrics 挂载），下方 ppMetrics 组装复用同一份结果。
     let rework = selectedRework;
@@ -191,20 +264,35 @@ export async function runAnalysisPipeline({ rawText, estimatorAlgorithm, options
         rework = { ...selectedRework, star: sunnyStar };
     }
 
+    // 4a. XDC1 的 RC 半段保持自身标定；LN 半段不采用 XDC1 的 numeric 投影，
+    //     而始终拼接 Sunny 的 LN 区间表结果（与 Sunny 卡片同源、同 star）。
+    if (actualEstimatorAlgorithm === "XDC1" && selectedRework?.unsupported !== true) {
+        const sunnyParts = splitEstDiffParts(normalizationSunnyResult?.estDiff);
+        const sunnyLnLabel = sunnyParts.length > 1 ? sunnyParts[sunnyParts.length - 1] : null;
+        const showLn = Number(normalizationSunnyResult?.lnRatio) >= 0.15
+            || options.enableAlwaysShowLNDifficulty === true;
+        if (sunnyLnLabel && showLn) {
+            rework = { ...rework, estDiff: `${selectedRework.estDiff} || ${sunnyLnLabel}` };
+        }
+    }
+
     // 4b. ppMetrics（withPpMetrics，Task 9）：全部字段来自同一个 Sunny 结果对象，star 取该结果 star
     //    （Sunny 原始 sr，与星数胶囊口径一致）。来源按算法：
     //    - Azusa/Roxy/Mixed：归一化 sunnyResult（sharedSunnyResult 或上方独立计算）
     //    - Daniel：withPpMetrics 时在 pipeline 内跑专用 Sunny pass（同 options + withPpMetrics:true）
+    //    - Proj7k（未回退）：结果以同 options 的 Sunny 结果为底，ppMetrics 即其字段，star 取 sunnyStar
     //    - Sunny/Companella / Azusa/Roxy 回退后的 Sunny：selectedRework 即 Sunny 结果
     //    失败/无 ppMetrics → null（软失败，不进 errors[]）；关闭时零额外计算、零输出字段。
     let ppMetrics = null;
-    if (options.withPpMetrics === true) {
+    if (options.withPpMetrics === true && rework?.unsupported !== true) {
         try {
             let sunnySrc = null;
             if (NORMALIZATION_ALGORITHMS.has(actualEstimatorAlgorithm) || estimatorAlgorithm === "Mixed") {
                 sunnySrc = normalizationSunnyResult;
             } else if (estimatorAlgorithm === "Daniel") {
                 sunnySrc = runSunnyEstimatorFromText(rawText, { ...options, withPpMetrics: true }, parser);
+            } else if (actualEstimatorAlgorithm === "Proj7k") {
+                sunnySrc = { ...selectedRework, star: selectedRework.sunnyStar };
             } else {
                 sunnySrc = selectedRework;
             }
@@ -225,13 +313,34 @@ export async function runAnalysisPipeline({ rawText, estimatorAlgorithm, options
     }
 
     // 5. SunnyWindow（forceSunnyWindow）：calculateSunny + calculateLN（带 parsed + enableAnalyzeLN）。
+    //    try/catch 软失败（与其他附属段一致）：对个别谱面（如转换文本边界）抛错时
+    //    不应拖垮整个 pipeline——否则卡片偶发 No data（用户：切走再切回才恢复）。
+    //    Perf: SunnyWindow 只需要 Sunny 的 star/lnRatio/columnCount/graph；pipeline 已在
+    //    归一化/估算阶段算过同文本同 options 的 Sunny 时直接复用，跳过重复的 calculateSunny。
+    //    classicMod=true 时不能复用：runSunnyEstimatorFromText 会把 classicMod 传给
+    //    calculateSunny，而 SunnyWindow 内部不传，两者不是同一结果，退回原路径。
+    const sunnyForWindow = options.classicMod === true
+        ? null
+        : (normalizationSunnyResult
+            || (actualEstimatorAlgorithm === "Sunny" || estimatorAlgorithm === "Companella"
+                ? selectedRework
+                : null));
     let sunnyWindow = null;
+    let sunnyWindowError = null;
     if (options.forceSunnyWindow) {
-        sunnyWindow = runSunnyWindowEstimatorFromText(
-            rawText,
-            { ...options, enableAnalyzeLN: options.enableAnalyzeLN === true },
-            parser,
-        );
+        try {
+            sunnyWindow = runSunnyWindowEstimatorFromText(
+                rawText,
+                {
+                    ...options,
+                    enableAnalyzeLN: options.enableAnalyzeLN === true,
+                    ...(sunnyForWindow ? { precomputedSunnyResult: sunnyForWindow } : {}),
+                },
+                parser,
+            );
+        } catch (err) {
+            sunnyWindowError = String(err?.message || err);
+        }
     }
 
     // 6. 6K 定数：display6kLevel && 6K 时按归一化后 star（6K 下恒为 Sunny sr）换算，2 位小数。
@@ -273,18 +382,29 @@ export async function runAnalysisPipeline({ rawText, estimatorAlgorithm, options
     }
 
     // 9. Ett（WASM，worker 内用 calc.js 现有 loader；import.meta.url 按模块文件解析，worker 同源可 fetch）。
+    //    若马拉松前置已算过（>300s 的 4K RC 候选），直接复用其结果，避免二次 WASM 计算（perf 约束）。
     let ettResult = null;
     let ettError = null;
+    let ettErrorCode = null;
     if (options.withEtterna) {
-        try {
-            ettResult = await analyzeEtternaFromText(rawText, {
-                musicRate: options.speedRate ?? 1,
-                scoreGoal: ETT_DEFAULT_SCORE_GOAL,
-                cvtFlag: options.cvtFlag,
-                etternaVersion: options.etternaVersion,
-            });
-        } catch (err) {
-            ettError = String(err?.message || err);
+        if (marathonEttReuse) {
+            if (marathonEttReuse.result) {
+                ettResult = marathonEttReuse.result;
+            } else {
+                ettError = marathonEttReuse.error;
+            }
+        } else {
+            try {
+                ettResult = await analyzeEtternaFromText(rawText, {
+                    musicRate: options.speedRate ?? 1,
+                    scoreGoal: ETT_DEFAULT_SCORE_GOAL,
+                    cvtFlag: options.cvtFlag,
+                    etternaVersion: options.etternaVersion,
+                });
+            } catch (err) {
+                ettError = String(err?.message || err);
+                ettErrorCode = typeof err?.code === "string" ? err.code : null;
+            }
         }
     }
 
@@ -311,6 +431,9 @@ export async function runAnalysisPipeline({ rawText, estimatorAlgorithm, options
         }
     }
 
+    // 11. 马拉松时长修正由估算器本体完成（见前置段：options.marathonCorrection 注入）。
+    //     此处无派生段——修正后的数值化难度即估算器输出（语义层即算法层）。
+
     return {
         rework,
         actualEstimatorAlgorithm,
@@ -325,6 +448,7 @@ export async function runAnalysisPipeline({ rawText, estimatorAlgorithm, options
         patternError,
         ettResult,
         ettError,
+        ettErrorCode,
         interludeStar,
         interludeError,
         companellaEttResult,

@@ -4,6 +4,49 @@
 
 ## 中文
 
+### 注意事项
+
+- 如果你使用的是桌面壳，可以直接在Interface language将语言改为中文。
+- 如果你使用的是 tosu，则无壳设置部分，请直接跳转到[卡片设置](#卡片设置)。
+- 当无法通过图形界面调整设置时，请前往 `tosu/settings/{你插件目录的名称}.value.json`（tosu卡片设置文件）、`mma-shell-config.json`（壳设置文件）或 `mma-settings.json`（壳卡片设置文件）手动调整。
+
+### 壳设置
+
+- **常规设置**
+  - **Interface language**：界面语言，默认跟随系统语言。
+    - 只影响壳自己的页面（设置页、预设管理器）；tosu 自带的设置面板固定为英文。
+  - **Game client**：选择需要使用的数据源。
+    - Auto：自动选择目前活跃的来源。优先级：游玩中 > 近期活动 > osu! > Etterna > Malody 4 > Malody
+    - 可锁定为某个来源（Osu! / Etterna / Malody / Malody 4）
+  - **Lazer data folder**：Lazer 的数据目录。
+    - 该目录通常与游戏安装目录不同，默认是 `%APPDATA%\osu`（其下含 `files`）。壳会优先读取 `storage.ini`，没有时自动探测默认目录。
+    - 只有移动过数据目录或自动探测失败时才需要填写；可以填数据根目录，也可以直接填 `files` 目录。修改后需重启壳。
+  - **Etterna root / Malody V root / Malody 4.3.7 root**：三个游戏的运行目录。
+    - 按需填写需要使用的游戏目录，用于寻找谱面进行分析。
+    - 留空令程序自动探测。推荐使用`bridges/install-bridge.ps1`脚本自动写入。
+  - **Always on Top**：保持窗口置顶。默认快捷键Ctrl+Shift+T。
+  - **Click-Through**：点击穿透。默认快捷键Ctrl+Shift+C。
+  - **Hotkeys**：用于调整上述功能的快捷键。重启以生效。支持 Ctrl/Shift/Alt/Win + 单个字母键 A–Z。
+  - **Log level**：日志等级。
+    - 如果你不清楚这个是做什么的，请不要随意修改。
+    - 当需要反馈问题时，请修改此项为 `debug`，随后一并报告`logs/`目录下的日志文件。
+- **Memory Offsets Management：内存偏移表管理**
+  - **osu!stable Offsets/osu!lazer Offsets**：osu! stable和lazer的偏移表状态。
+  - **Offsets Actions**：偏移表相关操作
+    - **Live Generator**：生成 lazer 偏移表。
+      - 当lazer更新，内存无法正常读取且开发者尚未发布更新时，使用此功能可快速根据当前运行的Lazer进程尝试生成偏移表。
+      - 使用时需要保持Lazer正在运行。你也可以通过`offsets/gen.exe`来生成。
+      - **使用方法**：先在游玩/回放界面生成一次，结束后停在结算屏再生成一次。如果缺失，会提示还缺哪一部分。在选歌界面直接生成只能得到基础字段，部分功能会不可用。
+    - **Check Remote Updates**：检查 GitHub 上的偏移表是否有新的更新；只有远端版本比本地/随包表更新时才会替换，同版本或更旧的表不会覆盖本地。
+- **壳专属卡片配置**（Desktop-shell card settings）
+  - **Combined Mode**：启用组合模式，组合模式可以同时在屏幕上自定义显示若干个模块，适合在写谱或 OBS 中使用。
+    - 启用后可以调整模块数量和显示顺序。在复选框中勾选所需模块。至少需要勾选一个模块。
+    - 右侧可以使用上下箭头调整模块顺序。
+  - **Odd-key middle lane**：决定在奇数Key中分轨Acc中间轨道的左右手分组。
+    - 在奇数Key中，选择中间轨道的数据分配到左手还是右手（即左空或右空，双空推荐选择不计入）。会影响左右手独立Acc的数据。
+
+### 卡片设置
+
 - **预设（Presets）**：
     - **Preset**: 选择预设以一键应用下方所有设置。
         - Default: 恢复默认配置。
@@ -13,7 +56,7 @@
         - TheLimitDoesNotExist / DanielLike: 面向高难与特殊玩法的配置。
         - Custom1 / Custom2 / Custom3: 自定义预设槽位，可在预设管理器页面管理。随后可以快速在 tosu 设置页应用，无需前往预设管理器手动应用。
         - LastSavedPreset: 自动跟随手动修改，修改会自动保存到其中。
-    - **自定义预设管理**: 在浏览器中打开管理页面 `presets.html`（位于插件目录，地址形如 `http://localhost:24050/<插件目录名>/presets.html`）。页面自动列出全部设置项，可勾选部分字段保存为预设、应用、重命名、删除，以及导出/导入预设文件与朋友分享。
+    - **自定义预设管理**: 在浏览器中打开管理页面 `presets.html`（位于插件目录，地址形如 `http://localhost:24050/<插件目录名>/presets.html`）。页面自动列出全部设置项，可勾选部分字段保存为预设、应用、重命名、删除，以及导出/导入预设文件与朋友分享。如果你使用的是桌面壳，直接进入设置页面即可快捷修改预设。
     - **预设指南**： 请前往 [docs/presets-guide.md](presets-guide.md) 查看预设使用说明和更多信息。
 - **模块设定**：
     - **Card Body Content**：选择在卡片主体显示的内容。
@@ -23,20 +66,20 @@
         - Etterna: 显示Etterna 7大键型分。
         - Graph: 显示难度变化图。
         - ReworkPP: 显示最大/实时 Rework PP 及其相关参数。
-        - Full: 显示完整内容，包括键型分析、难度图表和Etterna分数。不推荐日常使用，可能会比较拥挤。
-        - 注：对于非4/6/7K谱面，主体内容将自动回退为Pattern显示。
+        - LaneAcc: 分轨准确度与 ScoreV1 实时转换（仅桌面壳 + osu!lazer 原生 mania 4K–18K）。
+        - 注：原Full选项已移除。旧配置里的Full会自动按Auto处理；桌面壳用户如需同时显示多个模块，请在“组合模式”中勾选并排序。
     - **Top-left Capsule Text**：选择在卡片左上角胶囊显示的内容。
         - Auto: 根据谱面LN占比自动选择显示ReworkSR或MSD。
         - ReworkSR: 显示[Sunny Rework](https://github.com/sunnyxxy/Star-Rating-Rebirth)星数。
         - ReworkPP: 显示当前谱面的最大 Rework PP/实时 Rework PP 值（4 位有效数字）。
-        - MSD: 显示Etterna MSD。*仅适配4/6/7K谱面。
+        - MSD: 显示Etterna MSD。适配4K–18K谱面。
         - InterludeSR: 显示[Interlude](https://github.com/YAVSRG/YAVSRG)星数。
         - Pattern: 显示整体键型。
     - **Top-right Content**: 选择在卡片右上角显示的内容。
         - None: 不显示任何内容。
         - Graph: 显示难度变化图。
         - Difficulty: 显示估计难度。
-        - MSD: 显示Etterna MSD。*仅适配4/6/7K谱面。
+        - MSD: 显示Etterna MSD。适配4K–18K谱面。
         - InterludeSR: 显示Interlude星数。
         - ReworkSR: 显示Sunny Rework星数。
         - Pattern: 显示整体键型。
@@ -67,7 +110,7 @@
     - **Reverse Card Extension**: 是否反转卡片延展方向。
         - 启用后卡片底边保持锚定，扩展时向上生长；关闭时默认向下扩展。
     - **Card Visibility**: 控制卡片的显示时机。
-        - 可选值：`DuringPlay`（仅在游玩时显示）、`OutsidePlay`（仅在非游玩时显示）、`Always`（始终显示）。默认值为 `Always`。
+        - 可选值：`DuringPlay`（仅在游玩时显示）、`OutsidePlay`（仅在非游玩时显示）、`Always`（始终显示）。默认值为 `Always`。所有界面（含主菜单）都按该设置控制，不再强制隐藏。游玩态按各数据源独立判定，并叠加壳桥存活、Etterna `playingExpireAt` 与 Malody 4 selection 心跳新鲜度；断连或超时后不会沿用旧的 `playing` 位。状态行的错误/提示（包括壳的 osu 扫描提示、Malody V 动态 OD 未启用提示）不会覆盖显示控制；无数据源的等待态在 `OutsidePlay` 下正常显示，在 `DuringPlay` 下隐藏。
     - **Card Opacity**: 设置卡片整体透明度。
         - 可选范围：100% / 95% / 90% / 80% / 70%。
     - **Content Background Blur**: 是否启用背景图片模糊效果。
@@ -77,6 +120,7 @@
 - **功能性设置**：
     - **Pause Detection**: 是否启用暂停检测功能。
         - 推荐启用：启用后将在难度图表上显示暂停位置，并在卡片右下角显示暂停次数。
+        - 观看Lazer历史成绩时，同样显示该局的历史暂停位置；数据不可用时显示 `Pause Data Unavailable`（仅限 2025.816.0 版本之后的原生 Lazer 成绩）。
     - **Enable Update Check**: 是否启用版本更新检查。
         - 启用后默认每天最多检查一次 GitHub latest release。
         - 当从“关闭”切换到“开启”时，会立即额外触发一次检查。
@@ -86,6 +130,7 @@
         - 该选项只影响显示速度，不影响计算结果。默认启用。
     - **Vibro Detection**: 是否启用Vibro检测功能。
         - 推荐启用：启用后将检测谱面是否为Vibro谱面，并在估计难度中显示为Vibro。否则您将看到被极度拉高的难度估计。
+        - 检测使用的 Etterna MSD：4K 固定为 0.72.3 版本；非 4K 使用 0.74.0。
     - **SV Detection**: 是否启用SV谱面检测功能。
         - 启用后当检测到变速时，将在左下角显示SV标签。
         - 注意：如果未开启显示谱面标签胶囊，SV标签将不会显示。
@@ -103,21 +148,21 @@
         - 注意：该选项对所有使用了Sunny算法的功能生效。
     - **Analyze LN Parts**: 按LN分析谱面成分。
         - 显示谱面中有多少部分属于LN/HB/Mix/RC，并显示在左下角谱面标签胶囊中。
-    - **Pause Detection Threshold**: 设置暂停检测的时间阈值（毫秒）。
-        - 只有当游戏时间冻结超过该时长后，才会被判定为一次暂停。
-        - 默认值为500ms。如果游戏卡顿导致误判，可适当提高该值。
     - **Estimator Algorithm**: 选择用于难度估计的算法。
         - Mixed: (推荐)综合下方四个算法的混合算法，准确度相对较高。自动选择适配当前谱面的算法。
         - Azusa: 面向4K RC的融合算法，综合了下方算法并进行了针对调整，在RC场景下表现较好，但不适用于LN主体的谱面。
         - Roxy: 面向4K RC的元结构估算器。使用结构分析对谱面进行建模，再通过GBDT元模型融合Azusa/Sunny/Daniel的参考预测。
         - Sunny: 使用Sunny Rework直接映射段位星数，适配4/6/7K的LN与RC段位。
+        - Polaris: 面向Sunny表映射的修正估算器。覆盖7K的RC与LN两侧；其他键数自动回退Sunny。
         - [Daniel](https://thebagelofman.github.io/Daniel/): 使用Daniel算法进行估计，适配4K Reform Alpha及以上段位难度。
         - [Companella](https://github.com/Leinadix/companella): 使用Companella算法进行估计，适用于4K Reform Delta+及以下段位难度。
+        - [XDC1](https://github.com/TheBagelOfMan/xdc1): 使用XDC1算法进行估计，支持4K RC/LN，范围为Alpha至Theta；非4K谱面自动回退Sunny。
+        - [Proj7k](https://github.com/ka1z07/proj7k): 独立的7K物理模型。按手指建模每个音符对手的负荷，求出能把失误控制在容忍范围内的玩家水平，再按 JinJin Dan 给出标签。仅适用于7K；其他键数自动回退Sunny。
     - **Global Etterna Version**: 选择用于MSD以及相关计算的Etterna MinaCalc版本。
         - 不同版本的Etterna会有不同的MSD计算结果，可以选择个人喜好的版本。
         - 个人推荐使用默认值0.72.3。
-        - 改动该设定将会影响所有依赖于Etterna计算的功能，除了Companella估计算法以外。
-        - 4K将按所选版本计算；6K/7K为保证稳定性会优先使用0.74.0。
+        - 改动该设定将会影响所有依赖于Etterna计算的功能，除了Companella估计算法和Vibro检测以外。
+        - 4K将按所选版本计算；非 4K（5K–18K）固定使用 0.74.0。
         - 若当前版本不可用或不支持当前键数，将自动回退到可用版本。
     - **Companella Etterna Version**: 选择仅用于Companella估计算法的Etterna MinaCalc版本。
         - 该设定将仅影响Companella算法的计算结果，其他功能仍然使用Global Etterna Version设定的版本。
@@ -132,6 +177,11 @@
     - **Anonymous Usage Statistics**: 是否向项目遥测服务器匿名上报使用统计。
         - 仅上报聚合属性（算法/键数/mod/模式/难度/耗时等），**不包含**用户名、玩家id、分数、谱面标识或 IP 地址。
         - 默认开启；关闭后不再上报。
+    - **Difficulty Feedback (Desktop Shell Only)**: 结算后为当前谱面的估算难度打五档分（简单一个段/半个段/刚好/难了半个段/一个段）。
+        - 仅在桌面壳、且仅对 osu!mania 出现：4K 仅限 RC 谱面；6K/7K 支持 RC/LN/Mix/HB/SV（双标签时按稳定规则选一侧）。浏览器页与 OBS 源不显示。
+        - 会上传谱面 ID、当前显示的估算值、你的评分，以及一个经过签名的权重；**不上传**准度、分数、用户名或安装 ID 原文。
+        - 用于找出估算器系统性偏高/偏低的谱面，不会改变你或其他玩家看到的难度值。
+        - 默认开启；可在设置里关闭。
 - **调试内容**:
     - **Use Amount For Category**：是否启用基于谱面Cluster Amount的键型分类逻辑。
         - 启用后将根据谱面物件数量进行键型分类，**可能**会更准确地识别某些谱面。
@@ -148,6 +198,49 @@
 
 ## English
 
+### Notes
+
+- If you are using the desktop shell, you can directly change the language to your preferred choice under Interface language.
+- If you are using tosu, there is no shell settings section; please jump directly to [Card Settings](#card-settings).
+- When unable to adjust settings through the graphical interface, you can manually edit `tosu/settings/{plugin_folder_name}.value.json` (tosu card settings file), `mma-shell-config.json` (shell configuration file), or `mma-settings.json` (shell card settings file).
+
+### Shell Settings
+
+- **General Settings**:
+  - **Interface language**: Select the interface language. Default: Auto (follows system language).
+    - Only affects the shell's own pages (settings page, presets manager); tosu's built-in settings panel remains in English.
+  - **Game client**: Select the data source to use.
+    - Auto: Automatically selects the currently active source. Priority: Playing > Recent activity > osu! > Etterna > Malody 4 > Malody.
+    - Can be locked to a specific source (Osu! / Etterna / Malody / Malody 4).
+  - **Lazer data folder**: The data directory for osu!lazer.
+    - It is usually different from the game installation directory; the default is `%APPDATA%\osu` (which contains `files`). The shell reads `storage.ini` first and otherwise auto-detects the default directory.
+    - Only needed when the data directory was moved or auto-detection fails; either the data root or the `files` directory is accepted. Restart the shell after changing it.
+  - **Etterna root / Malody V root / Malody 4.3.7 root**: Installation directories for the three games.
+    - Fill in the game directories as needed to locate beatmaps for analysis.
+    - Leave blank for automatic detection. Recommended to use the `bridges/install-bridge.ps1` script to populate automatically.
+  - **Always on Top**: Keeps the window pinned on top. Default shortcut Ctrl+Shift+T.
+  - **Click-Through**: Ignores mouse events to pass clicks through to windows underneath. Default shortcut Ctrl+Shift+C.
+  - **Hotkeys**: Configures shortcuts for the features above. Restart the shell to take effect. Supports Ctrl/Shift/Alt/Win + single letter key A–Z.
+  - **Log level**: Log verbosity level.
+    - If you are unsure what this does, do not change it arbitrarily.
+    - When reporting an issue, change this to `debug` and provide the log file under the `logs/` directory.
+- **Memory Offsets Management**:
+  - **osu!stable Offsets / osu!lazer Offsets**: Offset table status for osu!stable and lazer.
+  - **Offsets Actions**: Offset table operations:
+    - **Live Generator**: Generate lazer offset tables.
+      - When lazer updates and memory cannot be read before an official shell/offsets update is released, use this feature to quickly attempt generating an offset table from the currently running Lazer process.
+      - Lazer must remain running during generation. You can also generate via `offsets/gen.exe`.
+      - **Usage**: generate once during play/replay, then generate again while staying on the result screen after finishing. If something is missing, the page tells you which part is missing. Generating directly from song select only produces the base fields and some features will be unavailable.
+    - **Check Remote Updates**: Check whether new offset tables are available on GitHub. Only a strictly newer remote table replaces the local one; same-version or older tables never overwrite a freshly generated/bundled table.
+- **Shell-exclusive Card Configuration**:
+  - **Combined Mode**: Enables combined mode, allowing multiple modules to be displayed on the screen simultaneously, suitable for charting or OBS usage.
+    - Once enabled, you can adjust the number of modules and their display order. Check the boxes for the desired modules. At least one module must be selected.
+    - Use the up and down arrows on the right to adjust the display order of the modules.
+  - **Odd-key middle lane**: Determines the hand grouping for the middle column in odd-key layouts for LaneAcc.
+    - In odd-key charts, choose whether middle column stats are assigned to the left hand, right hand, or excluded (independent; recommended if using thumb for spacebar). Affects per-hand independent accuracy metrics.
+
+### Card Settings
+
 - **Presets**:
     - **Preset**: Select a preset to apply all settings below at once.
         - Default: Reset to the factory default configuration.
@@ -157,7 +250,7 @@
         - TheLimitDoesNotExist / DanielLike: configurations for high-difficulty and niche play styles.
         - Custom1 / Custom2 / Custom3: custom preset slots, manageable on the management page in a browser. They can be quickly applied in the tosu settings page without going to the management page.
         - LastSavedPreset: automatically follows your manual changes; changes are saved into it automatically.
-    - **Custom preset management**: Open the management page `presets.html` in a browser (located in the plugin folder, e.g. `http://localhost:24050/<plugin folder name>/presets.html`). The page lists every setting automatically — check the fields you want, save as a preset, apply, rename, delete, or export/import preset files to share with friends.
+    - **Custom preset management**: Open the management page `presets.html` in a browser (located in the plugin folder, e.g. `http://localhost:24050/<plugin folder name>/presets.html`). The page lists every setting automatically — check the fields you want, save as a preset, apply, rename, delete, or export/import preset files to share with friends. If you are using the desktop shell, you can directly access the settings page for quick preset modifications.
     - **Presets Guide**: Please refer to [docs/presets-guide.md](presets-guide.md) for instructions on using presets and more information.
 - **Module Settings**:
     - **Card Body Content**: Select what to display in the main body of the card.
@@ -167,20 +260,20 @@
         - Etterna: Displays Etterna's 7 major skill set breakdowns.
         - Graph: Displays the difficulty variation graph.
         - ReworkPP: Displays the max/live Rework PP performance and related parameters.
-        - Full: Displays full content including pattern analysis, difficulty graph, and Etterna scores. Not recommended for daily use — may feel crowded.
-        - Note: For non-4/6/7K beatmaps, body content automatically falls back to Pattern.
+        - LaneAcc: Per-lane accuracy and live ScoreV1 conversion (desktop shell + osu!lazer native mania 4K–18K only).
+        - Note: The original Full option has been removed. Old configurations with Full will automatically be treated as Auto; desktop shell users who want to display multiple modules simultaneously should check and sort them in "Combined Mode".
     - **Top-left Capsule Text**: Select what to display in the top-left capsule.
         - Auto: Automatically selects ReworkSR or MSD based on the LN ratio of the beatmap.
         - ReworkSR: Displays [Sunny Rework](https://github.com/sunnyxxy/Star-Rating-Rebirth) star rating.
         - ReworkPP: Displays the Max Rework PP/Live Rework PP values (4 significant digits).
-        - MSD: Displays Etterna MSD. *Only compatible with 4/6/7K beatmaps.
+        - MSD: Displays Etterna MSD. Compatible with 4K–18K beatmaps.
         - InterludeSR: Displays [Interlude](https://github.com/YAVSRG/YAVSRG) star rating.
         - Pattern: Displays the overall pattern.
     - **Top-right Content**: Select what to display in the top-right of the card.
         - None: Displays nothing.
         - Graph: Displays the difficulty variation graph.
         - Difficulty: Displays the estimated difficulty.
-        - MSD: Displays Etterna MSD. *Only compatible with 4/6/7K beatmaps.
+        - MSD: Displays Etterna MSD. Compatible with 4K–18K beatmaps.
         - InterludeSR: Displays Interlude star rating.
         - ReworkSR: Displays Sunny Rework star rating.
         - Pattern: Displays the overall pattern.
@@ -211,7 +304,7 @@
     - **Reverse Card Extension**: Whether to reverse the card expansion direction.
         - When enabled, the card stays anchored at the bottom and grows upward; when disabled, it expands downward by default.
     - **Card Visibility**: Control when the card is shown.
-        - Available values: `DuringPlay` (show only while playing), `OutsidePlay` (show only when not playing), `Always` (always show). Defaults to `Always`.
+        - Available values: `DuringPlay` (show only while playing), `OutsidePlay` (show only when not playing), `Always` (always show). Defaults to `Always`. The setting applies everywhere, including the main menu; no screen is force-hidden. Play state is detected per source and gated by shell liveness, Etterna `playingExpireAt`, and Malody 4 selection-heartbeat freshness, so a disconnected or finished source cannot leave a stale `playing` flag. Status-line errors/notices (including the shell's osu scan hint and Malody V's dynamic-OD-disabled notice) never override this setting; the no-source waiting state is visible with `OutsidePlay` and hidden with `DuringPlay`.
     - **Card Opacity**: Set the overall card opacity.
         - Available values: 100% / 95% / 90% / 80% / 70%.
     - **Content Background Blur**: Whether to enable background image blur for content sections.
@@ -221,6 +314,7 @@
 - **Functional Settings**:
     - **Pause Detection**: Whether to enable pause detection.
         - Recommended: When enabled, pause positions will be displayed on the difficulty graph, and the pause count will be shown in the bottom-right corner of the card.
+        - While viewing Lazer historical scores, the historical pause positions for that play are shown as well; when the data is unavailable it shows `Pause Data Unavailable` (only native Lazer scores from version 2025.816.0 onwards).
     - **Enable Update Check**: Whether to enable version update checking.
         - When enabled, it checks the GitHub latest release at most once per day by default.
         - When switching from disabled to enabled, it immediately triggers one extra check.
@@ -230,6 +324,7 @@
         - This option only affects display speed, not the results themselves. Enabled by default.
     - **Vibro Detection**: Whether to enable vibro detection.
         - Recommended: When enabled, the plugin will detect if a beatmap is a vibro map and display it as "Vibro" in the estimated difficulty; otherwise, you will see an extremely inflated difficulty estimate.
+        - The Etterna MSD used for detection: 4K is pinned to 0.72.3; non-4K uses 0.74.0.
     - **SV Detection**: Whether to enable SV beatmap detection.
         - When enabled, an SV tag will be displayed in the bottom-left corner when speed variation is detected.
         - Note: If the Map Tag Capsule display is not enabled, the SV tag will not be shown.
@@ -242,9 +337,6 @@
         - Only effective with the Sunny estimator. Extended interval cover 4K RC, 4K LN, 7K RC; not extending 6K/7K LN.
         - Note: Estimates change when enabled. The extended tiers are purely experimental and accuracy is not guaranteed.
         - The data source for the extended tiers can be found [here](https://github.com/inuiyumegan/dan_piecewise#%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86).
-    - **Pause Detection Threshold**: Set the Minimum duration (ms) for a time freeze to be counted as a pause.
-        - A pause is only confirmed when the game time has been frozen for longer than this threshold.
-        - Default is 500ms. If game lag causes false positives, increase this value appropriately.
     - **Improve Sunny LN Estimation**: Improve Sunny Algorithm's LN Estimation
         - Removes rice parts and LN parts which LN% is too low, before Sunny Algorithm calculate Star Rate, making Sunny Algorithm more accurate on LN maps.
         - Note: This option affects all features that use the Sunny algorithm.
@@ -255,13 +347,16 @@
         - Azusa: A fusion algorithm oriented towards 4K RC, combining the algorithms below with targeted adjustments. Performs well in RC scenarios but is not suitable for LN-dominant beatmaps.
         - Roxy: A 4K RC meta-structural estimator. It models the beatmap using structural analysis and then blends reference predictions from Azusa/Sunny/Daniel using a GBDT meta-model.
         - Sunny: Maps directly to Dan star ratings using Suuny Rework. Compatible with LN and RC Dans for 4/6/7K.
+        - Polaris: A table-mapping correction estimator for Sunny. Covers both the RC and LN sides on 7K; other key counts automatically fall back to Sunny.
         - [Daniel](https://thebagelofman.github.io/Daniel/): Uses the Daniel algorithm for estimation, suitable for 4K Reform Alpha and above Dan difficulties.
         - [Companella](https://github.com/Leinadix/companella): Uses the Companella algorithm for estimation, suitable for 4K Reform Delta+ and below Dan difficulties.
+        - [XDC1](https://github.com/TheBagelOfMan/xdc1): Uses the XDC1 algorithm for estimation, supporting 4K RC/LN from Alpha to Theta; non-4K beatmaps automatically fall back to Sunny.
+        - [Proj7k](https://github.com/ka1z07/proj7k): An independent 7K physical model. It models each note's load on the fingers and hands, solves for the player level at which misses stay within a tolerance, and labels the result on the JinJin Dan ladder. 7K only; other key counts fall back to Sunny.
     - **Global Etterna Version**: Select the Etterna MinaCalc version used for MSD and related calculations.
         - Different versions of Etterna may yield different MSD results; you can choose your preferred version.
         - The default value 0.72.3 is personally recommended.
         - Changing this setting will affect all features that depend on Etterna calculations, except for the Companella estimation algorithm.
-        - 4K uses the selected version directly; 6K/7K prioritize 0.74.0 for stability.
+        - 4K uses the selected version directly; all non-4K (5K–18K) are pinned to 0.74.0.
         - If the current version is unavailable or does not support the current key count, it will automatically fall back to an available version.
     - **Companella Etterna Version**: Select the Etterna MinaCalc version used exclusively for the Companella estimation algorithm.
         - This setting only affects the Companella algorithm's calculations; other features will continue to use the version set in Global Etterna Version.
@@ -276,6 +371,11 @@
     - **Anonymous Usage Statistics**: Whether to send anonymous usage statistics to the project's telemetry server.
         - Only aggregate attributes are sent (algorithm, key count, mods, mode, difficulty, duration, etc.) — **no** username, player id, scores, beatmap identity, or IP address.
         - Enabled by default; disable to opt out.
+    - **Difficulty Feedback (Desktop Shell Only)**: rate the estimated difficulty of the map you just finished on a five-point scale (much easier / easier / accurate / harder / much harder).
+        - Only appears in the desktop shell for osu!mania: 4K remains RC-only; 6K/7K support RC/LN/Mix/HB/SV (for two-label charts one side is chosen deterministically). Browser pages and OBS sources never show it.
+        - Sends the beatmap ID, the displayed estimate, your rating, and a signed weight; it does **not** send accuracy, score, username, or the raw install ID.
+        - Used to find maps the estimator systematically over- or under-rates. It never changes the difficulty shown to you or anyone else.
+        - Enabled by default; turn it off in the settings to opt out.
 - **Debug Settings**:
     - **Use Amount For Category**: Whether to enable pattern classification logic based on the beatmap's Cluster Amount.
         - When enabled, pattern classification will be based on the number of objects in the beatmap, which **may** more accurately identify certain beatmaps.

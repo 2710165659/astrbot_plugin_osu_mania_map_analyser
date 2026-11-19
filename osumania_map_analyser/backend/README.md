@@ -23,11 +23,14 @@
 ## 功能
 
 - 在 `POST /api/v1/event` 接收事件（`boot`、`heartbeat`、`analyze`）。
-- 存入单个 SQLite 文件（`installs` + `events` 两张表）。
-- 在 `GET /api/v1/stats` 提供聚合统计。
-- 在 `/` 渲染公开看板（无图表库，纯内联 CSS/SVG）。
-- 自动删除早于 `MMA_TELEMETRY_RETENTION_DAYS` 的事件。
+- 写入单个 SQLite 文件：**写路径全聚合**——每个事件在同一事务里落原始日志 + 更新聚合表（`daily_agg` / `install_days` / `install_hours`）。
+- 在 `GET /api/v1/stats` 提供聚合统计（只读小表，毫秒级，与事件总量无关；窗口 1d/7d/30d/90d + 自定义日期范围）。
+- 在 `/` 渲染公开看板（无图表库，纯内联 CSS/SVG；1d 窗口显示小时粒度趋势）。
+- 原始事件日志保留 `MMA_TELEMETRY_RAW_RETENTION_DAYS`（默认 14 天）后自动清理；所有统计口径由永久聚合表承载，不受保留期影响。
 - 可选：把数据库快照备份到华为云 OBS（每日 ×30 + 每月 ×12）。
+- 一次性重建命令：`telemetry-server -migrate`（停服状态下从原始事件清空重建全部聚合，幂等）。
+- 一次性清洗命令：`telemetry-server -clean`（停服状态下清洗历史非官方算法、异常调试耗时与未知版本）。
+- 可选：**RC 难度反馈**（服务端 `FEEDBACK_ENABLED=true` 才启用）——独立 `feedback.db` 接收壳签名后的五档评分，经 osu! API 校验与严格规则后入库，提供聚合表、私有 admin 页（`/feedback`）、公开聚合页（`/feedback-stats`，`GET /api/v1/feedback/summary`，无 per-map）与 CSV。客户端默认开启、可在插件设置里关闭；服务端未启用时相关路由 404。
 
 ## 隐私
 
@@ -36,6 +39,8 @@
 **永不采集/存储**：用户名、玩家 id、分数/acc、谱面 md5/标题、IP 地址（连哈希都不存）、UA、操作系统、时区。采集端在服务端做字段白名单过滤，其余一律丢弃。
 
 看板与 `/api/v1/stats` 只暴露**聚合结果**——绝不暴露单个安装 ID、单条事件或 IP。
+
+**RC 难度反馈**是第二类、默认开启（可在设置中关闭）的数据：只上传谱面 ID/checksum、当前显示难度、五档评分、粗粒度 weight 与特征（键数/LN 比例/键型），不传 acc、分数、用户名或 session；`install_id` 只在服务端 HMAC 内使用、不落库。详见 [docs/features/telemetry.md §7](../docs/features/telemetry.md) 与 [docs/security.md](docs/security.md) §5。
 
 ## 架构
 
@@ -53,6 +58,7 @@ backend/
   internal/config/              .env 加载与校验
   internal/ratelimit/           内存固定窗口限流器
   internal/store/               SQLite schema 与查询
+  internal/spec/                遥测合法值域白名单、校验规则与边界（权威契约）
   internal/telemetry/           POST /api/v1/event 处理器
   internal/analytics/           聚合与分布统计
   internal/web/                 / 看板 + /api/v1/stats（含内嵌 HTML）
@@ -86,11 +92,15 @@ curl -d '{"id":"00000000-0000-4000-8000-000000000000","kind":"boot","version":"1
 | --- | --- | --- |
 | `MMA_TELEMETRY_ADDR` | `:8080` | 监听地址（反代后面绑定 `127.0.0.1:8080`） |
 | `MMA_TELEMETRY_DB` | `telemetry.db` | SQLite 路径 |
-| `MMA_TELEMETRY_RETENTION_DAYS` | `365` | 事件保留天数 |
+| `MMA_TELEMETRY_RAW_RETENTION_DAYS` | `14` | 原始事件日志保留天数（调试/重建源；不影响统计口径） |
+| `MMA_TELEMETRY_ACTIVE_MIN` | `10` | 「活跃」= 当日 ≥N 次 analyze |
+| `MMA_TELEMETRY_HOUR_RETENTION_DAYS` | `90` | `install_hours` 滚动窗口（24h 分布/小时趋势上限） |
 | `MMA_TELEMETRY_ONLINE_WINDOW_MIN` | `10` | 「在线」= last_seen 在 N 分钟内 |
 | `MMA_TELEMETRY_RATE_LIMIT_PER_MIN` | `120` | 采集请求限速（次/分/IP，0 关闭） |
 | `MMA_TELEMETRY_STATS_CACHE_SECONDS` | `60` | `/api/v1/stats` 聚合缓存秒数 |
 | `MMA_BACKUP_OBS_*` | 空 | 华为云 OBS 备份凭据（空 = 禁用） |
+| `FEEDBACK_ENABLED` | `false` | 启用 RC 难度反馈端点（还需公钥/去重密钥/osu! client） |
+| `MMA_FEEDBACK_DB` | `feedback.db` | 反馈库路径（与遥测库分开） |
 
 ## HTTP 接口
 
@@ -107,7 +117,7 @@ curl -d '{"id":"00000000-0000-4000-8000-000000000000","kind":"boot","version":"1
 }
 ```
 
-返回 `204 No Content`。请求体错误返回 `400`，方法错误返回 `405`，被限流返回 `429`。`data` 对象在服务端只保留以下键：`algorithm`、`actualAlgorithm`、`keycount`、`mods`、`speedRate`、`mode`、`star`、`lnRatio`、`typeBreakdown`、`durationMs`、`numericDifficulty`（可选，标准数值化难度 .0=mid，见 `docs/features/telemetry.md`）。
+返回 `204 No Content`。请求体错误返回 `400`，方法错误返回 `405`，被限流返回 `429`。`data` 对象在服务端只保留以下键：`algorithm`、`actualAlgorithm`、`keycount`、`mods`、`speedRate`、`mode`、`star`、`lnRatio`、`typeBreakdown`、`durationMs`、`numericDifficulty`（可选，标准数值化难度 .0=mid，见 `docs/features/telemetry.md`）。其中 `actualAlgorithm` 的取值域是闭集（真实子算法名，见 `docs/features/telemetry.md`），聚合直接按该字段的字符串分桶——插件侧显示用的胶囊标签不会出现在这里。
 
 对 `POST`/`OPTIONS` 开放 CORS（插件运行在 `http://localhost:24050`）。
 
@@ -125,7 +135,13 @@ curl -d '{"id":"00000000-0000-4000-8000-000000000000","kind":"boot","version":"1
 
 ## 数据保留
 
-后台循环删除早于 `MMA_TELEMETRY_RETENTION_DAYS`（默认 365）的 `events`。`installs` 表很小，保留。聚合按需计算并缓存 60 秒。
+三档独立保留（见 `data-model.md`）：
+
+- **原始事件 `events`**：`MMA_TELEMETRY_RAW_RETENTION_DAYS`（默认 14）——纯调试日志，删了不影响任何统计；
+- **小时表 `install_hours`**：`MMA_TELEMETRY_HOUR_RETENTION_DAYS`（默认 90）——24h 分布/小时趋势的窗口上限；
+- **聚合表 `daily_agg` / `install_days` / `installs`**：永久——所有看板统计的事实来源。
+
+后台循环每 24h 清理一次；「活跃」口径 = 当日 ≥ `MMA_TELEMETRY_ACTIVE_MIN`（默认 10）次 analyze，由永久表承载，与清理策略完全解耦。聚合按窗口缓存 60s。
 
 ## 部署（Linux）
 
@@ -133,7 +149,7 @@ curl -d '{"id":"00000000-0000-4000-8000-000000000000","kind":"boot","version":"1
 
 ```bash
 cd backend
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-X main.version=1.0.0 -s -w" -o bin/telemetry-server ./cmd/server
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-X main.version=1.1.2 -s -w" -o bin/telemetry-server ./cmd/server
 ```
 
 在服务器上：

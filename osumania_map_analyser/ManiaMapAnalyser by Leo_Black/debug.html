@@ -202,7 +202,9 @@
     </main>
 
     <script type="module">
-        import WebSocketManager from "./js/app/socket.js";
+        window.__MMA_TELEMETRY_ENDPOINT = "";
+
+        import WebSocketManager from "./js/app/net/socket.js";
         import { createEstimatorDebugPanel } from "./js/debug/estimatorDebugPanel.js";
 
         const payloadEl = document.getElementById("payload");
